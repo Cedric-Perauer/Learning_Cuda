@@ -51,6 +51,8 @@ compare.h
 /home/cedric/Learning_Cuda/Problem_Sets/HW1/compare.h
 HW1.cpp
 /home/cedric/Learning_Cuda/Problem_Sets/HW1/HW1.cpp
+chrono
+-
 
 /home/cedric/Learning_Cuda/Problem_Sets/HW1/reference_calc.cpp
 cuda_runtime.h
