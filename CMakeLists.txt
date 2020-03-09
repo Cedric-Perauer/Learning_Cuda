@@ -37,7 +37,9 @@ if(CUDA_FOUND)
   # add debugging to CUDA NVCC flags.  For NVidia's NSight tools.
   set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
 
-  add_subdirectory (Problem_Sets/HW1)
+  add_subdirectory (Problem_Sets/HW1) 
+  add_subdirectory (Problem_Sets/HW2) 
+
 else(CUDA_FOUND)
   message("CUDA is not installed on this system.")
 endif()
