@@ -38,7 +38,10 @@ if(CUDA_FOUND)
   set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
 
   add_subdirectory (Problem_Sets/HW1) 
-  add_subdirectory (Problem_Sets/HW2) 
+  #add_subdirectory (Problem_Sets/HW2)
+  add_subdirectory (Problem_Sets/HW3)
+
+ 
 
 else(CUDA_FOUND)
   message("CUDA is not installed on this system.")

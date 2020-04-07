@@ -6,5 +6,5 @@ CXX_FLAGS = -Ofast -fPIC   -std=c++11
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/usr/local/cuda-10.2/include -isystem /usr/include/opencv 
+CXX_INCLUDES = -I/usr/local/cuda-10.1/include -isystem /opt/intel/openvino_2019.3.376/opencv/include 
 

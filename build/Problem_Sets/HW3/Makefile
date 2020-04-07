@@ -80,14 +80,14 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/cedric/Learning_Cuda/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/cedric/Learning_Cuda/build/CMakeFiles /home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/progress.marks
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW2/all
+	cd /home/cedric/Learning_Cuda/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/cedric/Learning_Cuda/build/CMakeFiles /home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/progress.marks
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/cedric/Learning_Cuda/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW2/clean
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/clean
 .PHONY : clean
 
 # The main clean target
@@ -97,12 +97,12 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW2/preinstall
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW2/preinstall
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
@@ -111,19 +111,19 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-Problem_Sets/HW2/CMakeFiles/HW2.dir/rule:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW2/CMakeFiles/HW2.dir/rule
-.PHONY : Problem_Sets/HW2/CMakeFiles/HW2.dir/rule
+Problem_Sets/HW3/CMakeFiles/HW3.dir/rule:
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/CMakeFiles/HW3.dir/rule
+.PHONY : Problem_Sets/HW3/CMakeFiles/HW3.dir/rule
 
 # Convenience name for target.
-HW2: Problem_Sets/HW2/CMakeFiles/HW2.dir/rule
+HW3: Problem_Sets/HW3/CMakeFiles/HW3.dir/rule
 
-.PHONY : HW2
+.PHONY : HW3
 
 # fast build rule for target.
-HW2/fast:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/build
-.PHONY : HW2/fast
+HW3/fast:
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/build
+.PHONY : HW3/fast
 
 compare.o: compare.cpp.o
 
@@ -131,7 +131,7 @@ compare.o: compare.cpp.o
 
 # target to build an object file
 compare.cpp.o:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/compare.cpp.o
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/compare.cpp.o
 .PHONY : compare.cpp.o
 
 compare.i: compare.cpp.i
@@ -140,7 +140,7 @@ compare.i: compare.cpp.i
 
 # target to preprocess a source file
 compare.cpp.i:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/compare.cpp.i
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/compare.cpp.i
 .PHONY : compare.cpp.i
 
 compare.s: compare.cpp.s
@@ -149,8 +149,35 @@ compare.s: compare.cpp.s
 
 # target to generate assembly for a file
 compare.cpp.s:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/compare.cpp.s
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/compare.cpp.s
 .PHONY : compare.cpp.s
+
+loadSaveImage.o: loadSaveImage.cpp.o
+
+.PHONY : loadSaveImage.o
+
+# target to build an object file
+loadSaveImage.cpp.o:
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/loadSaveImage.cpp.o
+.PHONY : loadSaveImage.cpp.o
+
+loadSaveImage.i: loadSaveImage.cpp.i
+
+.PHONY : loadSaveImage.i
+
+# target to preprocess a source file
+loadSaveImage.cpp.i:
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/loadSaveImage.cpp.i
+.PHONY : loadSaveImage.cpp.i
+
+loadSaveImage.s: loadSaveImage.cpp.s
+
+.PHONY : loadSaveImage.s
+
+# target to generate assembly for a file
+loadSaveImage.cpp.s:
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/loadSaveImage.cpp.s
+.PHONY : loadSaveImage.cpp.s
 
 main.o: main.cpp.o
 
@@ -158,7 +185,7 @@ main.o: main.cpp.o
 
 # target to build an object file
 main.cpp.o:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/main.cpp.o
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/main.cpp.o
 .PHONY : main.cpp.o
 
 main.i: main.cpp.i
@@ -167,7 +194,7 @@ main.i: main.cpp.i
 
 # target to preprocess a source file
 main.cpp.i:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/main.cpp.i
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/main.cpp.i
 .PHONY : main.cpp.i
 
 main.s: main.cpp.s
@@ -176,7 +203,7 @@ main.s: main.cpp.s
 
 # target to generate assembly for a file
 main.cpp.s:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/main.cpp.s
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/main.cpp.s
 .PHONY : main.cpp.s
 
 reference_calc.o: reference_calc.cpp.o
@@ -185,7 +212,7 @@ reference_calc.o: reference_calc.cpp.o
 
 # target to build an object file
 reference_calc.cpp.o:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/reference_calc.cpp.o
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/reference_calc.cpp.o
 .PHONY : reference_calc.cpp.o
 
 reference_calc.i: reference_calc.cpp.i
@@ -194,7 +221,7 @@ reference_calc.i: reference_calc.cpp.i
 
 # target to preprocess a source file
 reference_calc.cpp.i:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/reference_calc.cpp.i
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/reference_calc.cpp.i
 .PHONY : reference_calc.cpp.i
 
 reference_calc.s: reference_calc.cpp.s
@@ -203,7 +230,7 @@ reference_calc.s: reference_calc.cpp.s
 
 # target to generate assembly for a file
 reference_calc.cpp.s:
-	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW2/CMakeFiles/HW2.dir/build.make Problem_Sets/HW2/CMakeFiles/HW2.dir/reference_calc.cpp.s
+	cd /home/cedric/Learning_Cuda/build && $(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/reference_calc.cpp.s
 .PHONY : reference_calc.cpp.s
 
 # Help Target
@@ -213,11 +240,14 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
-	@echo "... HW2"
+	@echo "... HW3"
 	@echo "... edit_cache"
 	@echo "... compare.o"
 	@echo "... compare.i"
 	@echo "... compare.s"
+	@echo "... loadSaveImage.o"
+	@echo "... loadSaveImage.i"
+	@echo "... loadSaveImage.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

@@ -58,18 +58,18 @@ endif()
 
 # Set these up as variables to make reading the generated file easier
 set(CMAKE_COMMAND "/usr/bin/cmake") # path
-set(source_file "/home/cedric/Learning_Cuda/Problem_Sets/HW1/student_func.cu") # path
-set(NVCC_generated_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/CMakeFiles/HW1.dir//HW1_generated_student_func.cu.o.NVCC-depend") # path
-set(cmake_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/CMakeFiles/HW1.dir//HW1_generated_student_func.cu.o.depend") # path
+set(source_file "/home/cedric/Learning_Cuda/Problem_Sets/HW3/student_func.cu") # path
+set(NVCC_generated_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/HW3.dir//HW3_generated_student_func.cu.o.NVCC-depend") # path
+set(cmake_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/HW3.dir//HW3_generated_student_func.cu.o.depend") # path
 set(CUDA_make2cmake "/usr/share/cmake-3.10/Modules/FindCUDA/make2cmake.cmake") # path
 set(CUDA_parse_cubin "/usr/share/cmake-3.10/Modules/FindCUDA/parse_cubin.cmake") # path
 set(build_cubin OFF) # bool
 set(CUDA_HOST_COMPILER "/usr/bin/clang") # path
 # We won't actually use these variables for now, but we need to set this, in
 # order to force this file to be run again if it changes.
-set(generated_file_path "/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/CMakeFiles/HW1.dir//.") # path
-set(generated_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/CMakeFiles/HW1.dir//./HW1_generated_student_func.cu.o") # path
-set(generated_cubin_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/CMakeFiles/HW1.dir//./HW1_generated_student_func.cu.o.cubin.txt") # path
+set(generated_file_path "/home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/HW3.dir//.") # path
+set(generated_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/HW3.dir//./HW3_generated_student_func.cu.o") # path
+set(generated_cubin_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW3/CMakeFiles/HW3.dir//./HW3_generated_student_func.cu.o.cubin.txt") # path
 
 set(CUDA_NVCC_EXECUTABLE "/usr/local/cuda-10.1/bin/nvcc") # path
 set(CUDA_NVCC_FLAGS 
@@ -77,9 +77,9 @@ set(CUDA_NVCC_FLAGS
   -gencode;arch=compute_35,code=sm_35;
   -gencode;arch=compute_35,code=compute_35;  ;; ) # list
 # Build specific configuration flags
+set(CUDA_NVCC_FLAGS_RELEASE  ; )
 set(CUDA_NVCC_FLAGS_DEBUG -G ; )
 set(CUDA_NVCC_FLAGS_MINSIZEREL  ; )
-set(CUDA_NVCC_FLAGS_RELEASE  ; )
 set(CUDA_NVCC_FLAGS_RELWITHDEBINFO  ; )
 set(nvcc_flags -m64) # list
 set(CUDA_NVCC_INCLUDE_DIRS "/usr/local/cuda-10.1/include;/usr/local/cuda-10.1/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include") # list (needs to be in quotes to handle spaces properly).
@@ -108,9 +108,9 @@ endif()
 # This is the list of host compilation flags.  It C or CXX should already have
 # been chosen by FindCUDA.cmake.
 set(CMAKE_HOST_FLAGS  )
+set(CMAKE_HOST_FLAGS_RELEASE -Ofast -fPIC)
 set(CMAKE_HOST_FLAGS_DEBUG -g)
 set(CMAKE_HOST_FLAGS_MINSIZEREL -Os -DNDEBUG)
-set(CMAKE_HOST_FLAGS_RELEASE -Ofast -fPIC)
 set(CMAKE_HOST_FLAGS_RELWITHDEBINFO -O2 -g -DNDEBUG)
 
 # Take the compiler flags and package them up to be sent to the compiler via -Xcompiler

@@ -12,8 +12,8 @@ set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
-  "/usr/local/cuda-10.2/include"
-  "/usr/include/opencv"
+  "/usr/local/cuda-10.1/include"
+  "/opt/intel/openvino_2019.3.376/opencv/include"
   )
 
 # Targets to which this target links.

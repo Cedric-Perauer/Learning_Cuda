@@ -91,16 +91,12 @@ void min_kernel(float * d_out, float *d_in, int size)
    int Id = threadIdx.x + blockDim.x * blockIdx.x; 
    int tid = threadIdx.x; 
    s_data[tid] = d_in[tid]; //load to shared memory
-   __synchthreads();  
-   
-
-
-
+   __synchthreads(); 
    for(unsigned int s = blockDim.x/2; s > 0; s >>=1)
    {
       if(tid>=size)
       {
-         s_data[Id+s] < s_data[Id] ? s_data[Id+s] : s_data[Id];  //setmin
+         s_data[Id] = s_data[Id+s] < s_data[Id] ? s_data[Id+s] : s_data[Id];  //setmin
       }
       __synchthreads(); 
    }
@@ -125,7 +121,7 @@ __global__ void max_kernel(float * d_out, float *d_in)
    {
       if(tid<s)
       {
-         s_data[Id+s] > s_data[Id] ? s_data[Id+s] : s_data[Id];  //setmax
+         s_data[Id] = s_data[Id+s] > s_data[Id] ? s_data[Id+s] : s_data[Id];  //setmax
       }
       __synchthreads(); 
    }
@@ -141,7 +137,7 @@ __global__ void histo_atomic(unsigned int *out_histo,const float *d_in, int num_
 {
    int tid = threadIdx.x; 
    int id = tid + blockIdx.x * blockIdx.x; 
-   if(global >= size)
+   if(tid >= size)
    {
       return; 
    }

@@ -1,4 +1,4 @@
-# Install script for directory: /home/cedric/Learning_Cuda/Lesson_Code/Lesson2
+# Install script for directory: /home/cedric/Learning_Cuda/Problem_Sets/HW3
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
