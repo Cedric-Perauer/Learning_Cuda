@@ -40,6 +40,7 @@ if(CUDA_FOUND)
   add_subdirectory (Problem_Sets/HW1) 
   #add_subdirectory (Problem_Sets/HW2)
   add_subdirectory (Problem_Sets/HW3)
+  
 
  
 

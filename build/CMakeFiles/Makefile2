@@ -115,59 +115,22 @@ clean: Problem_Sets/HW1/CMakeFiles/HW1.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Directory level rules for directory Problem_Sets/HW3
+# Directory level rules for directory Udemy_course
 
 # Convenience name for "all" pass in the directory.
-Problem_Sets/HW3/all: Problem_Sets/HW3/CMakeFiles/HW3.dir/all
+Udemy_course/all:
 
-.PHONY : Problem_Sets/HW3/all
+.PHONY : Udemy_course/all
 
 # Convenience name for "clean" pass in the directory.
-Problem_Sets/HW3/clean: Problem_Sets/HW3/CMakeFiles/HW3.dir/clean
+Udemy_course/clean:
 
-.PHONY : Problem_Sets/HW3/clean
+.PHONY : Udemy_course/clean
 
 # Convenience name for "preinstall" pass in the directory.
-Problem_Sets/HW3/preinstall:
+Udemy_course/preinstall:
 
-.PHONY : Problem_Sets/HW3/preinstall
-
-#=============================================================================
-# Target rules for target Problem_Sets/HW3/CMakeFiles/HW3.dir
-
-# All Build rule for target.
-Problem_Sets/HW3/CMakeFiles/HW3.dir/all:
-	$(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/depend
-	$(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/cedric/Learning_Cuda/build/CMakeFiles --progress-num=6,7,8,9,10,11,12 "Built target HW3"
-.PHONY : Problem_Sets/HW3/CMakeFiles/HW3.dir/all
-
-# Include target in all.
-all: Problem_Sets/HW3/CMakeFiles/HW3.dir/all
-
-.PHONY : all
-
-# Build rule for subdir invocation for target.
-Problem_Sets/HW3/CMakeFiles/HW3.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/cedric/Learning_Cuda/build/CMakeFiles 7
-	$(MAKE) -f CMakeFiles/Makefile2 Problem_Sets/HW3/CMakeFiles/HW3.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/cedric/Learning_Cuda/build/CMakeFiles 0
-.PHONY : Problem_Sets/HW3/CMakeFiles/HW3.dir/rule
-
-# Convenience name for target.
-HW3: Problem_Sets/HW3/CMakeFiles/HW3.dir/rule
-
-.PHONY : HW3
-
-# clean rule for target.
-Problem_Sets/HW3/CMakeFiles/HW3.dir/clean:
-	$(MAKE) -f Problem_Sets/HW3/CMakeFiles/HW3.dir/build.make Problem_Sets/HW3/CMakeFiles/HW3.dir/clean
-.PHONY : Problem_Sets/HW3/CMakeFiles/HW3.dir/clean
-
-# clean rule for target.
-clean: Problem_Sets/HW3/CMakeFiles/HW3.dir/clean
-
-.PHONY : clean
+.PHONY : Udemy_course/preinstall
 
 #=============================================================================
 # Special targets to cleanup operation of make.

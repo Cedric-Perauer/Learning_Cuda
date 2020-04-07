@@ -9,16 +9,11 @@ set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
   "../CMakeLists.txt"
   "../Problem_Sets/HW1/CMakeLists.txt"
-  "../Problem_Sets/HW3/CMakeLists.txt"
   "CMakeFiles/3.10.2/CMakeCCompiler.cmake"
   "CMakeFiles/3.10.2/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.10.2/CMakeSystem.cmake"
   "Problem_Sets/HW1/CMakeFiles/HW1.dir/HW1_generated_student_func.cu.o.cmake.pre-gen"
   "Problem_Sets/HW1/CMakeFiles/HW1.dir/HW1_generated_student_func.cu.o.depend"
-  "Problem_Sets/HW3/CMakeFiles/HW3.dir/HW3_generated_HW3.cu.o.cmake.pre-gen"
-  "Problem_Sets/HW3/CMakeFiles/HW3.dir/HW3_generated_HW3.cu.o.depend"
-  "Problem_Sets/HW3/CMakeFiles/HW3.dir/HW3_generated_student_func.cu.o.cmake.pre-gen"
-  "Problem_Sets/HW3/CMakeFiles/HW3.dir/HW3_generated_student_func.cu.o.depend"
   "/opt/intel/openvino_2019.3.376/opencv/cmake/OpenCVConfig-version.cmake"
   "/opt/intel/openvino_2019.3.376/opencv/cmake/OpenCVConfig.cmake"
   "/opt/intel/openvino_2019.3.376/opencv/cmake/OpenCVModules-release.cmake"
@@ -62,11 +57,10 @@ set(CMAKE_MAKEFILE_OUTPUTS
 set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/CMakeDirectoryInformation.cmake"
   "Problem_Sets/HW1/CMakeFiles/CMakeDirectoryInformation.cmake"
-  "Problem_Sets/HW3/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "Udemy_course/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "Problem_Sets/HW1/CMakeFiles/HW1.dir/DependInfo.cmake"
-  "Problem_Sets/HW3/CMakeFiles/HW3.dir/DependInfo.cmake"
   )
