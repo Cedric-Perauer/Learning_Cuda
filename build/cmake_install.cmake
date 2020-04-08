@@ -39,8 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/home/cedric/Learning_Cuda/build/Problem_Sets/HW1/cmake_install.cmake")
-  include("/home/cedric/Learning_Cuda/build/Udemy_course/cmake_install.cmake")
+  include("/home/cedric/Learning_Cuda/build/Udemy_course/Chapter1/cmake_install.cmake")
 
 endif()
 

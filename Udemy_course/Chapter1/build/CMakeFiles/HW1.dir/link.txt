@@ -1,0 +1,1 @@
+/usr/bin/c++  -Ofast -fPIC  -rdynamic CMakeFiles/HW1.dir/HW1_generated_exercise1.cu.o  -o ../bin/HW1 /usr/local/cuda-10.2/lib64/libcudart_static.a -lpthread -ldl -lrt 
