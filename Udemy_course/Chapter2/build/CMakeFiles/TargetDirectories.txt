@@ -1,0 +1,4 @@
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/build/CMakeFiles/rebuild_cache.dir
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/build/CMakeFiles/edit_cache.dir
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/build/CMakeFiles/HW1.dir
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/build/CMakeFiles/HW2.dir

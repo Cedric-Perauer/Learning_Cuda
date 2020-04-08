@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/common.cpp
+common.h
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/common.h
+
+/home/cedric/Learning_Cuda/Udemy_course/Chapter2/common.h
+stdio.h
+-
+cstring
+-
+time.h
+-
+stdlib.h
+-
+fstream
+-
+

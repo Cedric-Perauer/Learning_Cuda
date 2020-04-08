@@ -10,13 +10,12 @@ __global__ void print_details()
 
 }
 
-int main()
+int main(int argc, char** argv)
 {
-int nx = 4; 
-int ny = 4; 
-int nz = 4; 
-dim3 block(2,2,2); 
-dim3 grid(nx/block.x, ny/block.y, nz/block.z); 
+printf("running neighbored pairs reduction\n"); 
+
+int size = 1 << 27; //28MB of Data
+int byte_size = size * sizeof(int); 
 
 print_details<<<grid,block>>>(); 
 
