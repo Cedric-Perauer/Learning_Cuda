@@ -1,4 +1,2 @@
 # Hashes of file build rules.
-9597ec1b741e5e13a3fed4711a847046 Udemy_course/Chapter1/CMakeFiles/exercise1.dir/exercise1_generated_exercise1.cu.o
-82ef022a700589f12f852e3e0641c452 Udemy_course/Chapter1/CMakeFiles/exercise1.dir/exercise1_generated_exercise2.cu.o
-bc6908e87ce65768ce49f9a3176cf5aa Udemy_course/Chapter1/CMakeFiles/exercise1.dir/exercise1_generated_exercise3.cu.o
+c93c784d1b38fc0dca39e905aeac112f Problem_Sets/HW1/CMakeFiles/HW1.dir/HW1_generated_student_func.cu.o

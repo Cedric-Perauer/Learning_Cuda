@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   //call the students' code
   your_rgba_to_greyscale(h_rgbaImage, d_rgbaImage, d_greyImage, numRows(), numCols());
   timer.Stop();
-  cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+  cudaDeviceSynchronize(); 
 
   int err = printf("Your code ran in: %f msecs.\n", timer.Elapsed());
 

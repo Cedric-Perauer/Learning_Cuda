@@ -111,17 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named exercise1
+# Target rules for targets named HW1
 
 # Build rule for target.
-exercise1: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 exercise1
-.PHONY : exercise1
+HW1: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 HW1
+.PHONY : HW1
 
 # fast build rule for target.
-exercise1/fast:
-	$(MAKE) -f Udemy_course/Chapter1/CMakeFiles/exercise1.dir/build.make Udemy_course/Chapter1/CMakeFiles/exercise1.dir/build
-.PHONY : exercise1/fast
+HW1/fast:
+	$(MAKE) -f Problem_Sets/HW1/CMakeFiles/HW1.dir/build.make Problem_Sets/HW1/CMakeFiles/HW1.dir/build
+.PHONY : HW1/fast
 
 # Help Target
 help:
@@ -131,7 +131,7 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
-	@echo "... exercise1"
+	@echo "... HW1"
 .PHONY : help
 
 
