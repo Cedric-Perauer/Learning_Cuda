@@ -130,6 +130,24 @@ void gaussian_blur(const unsigned char* const inputChannel,
   int idx_x = threadIdx.x + blockDim.x * blockIdx.x; 
   int idx_y = threadIdx.y + blockDim.y * blockIdx.y; 
 
+  extern __shared__ float shared_filter[];
+  int threads_per_block = blockDim.x * blockDim.y;
+  // Number of filter entries each thread needs to copy
+  int filters_per_thread = (int)ceil((double)filterWidth * filterWidth / threads_per_block);
+  // Thread index inside the block
+  int index = threadIdx.y * blockDim.x + threadIdx.x;
+  index = index * filters_per_thread;
+  
+  for (int i = 0; i < filters_per_thread; i++) {
+      if (index < filterWidth * filterWidth) {
+        shared_filter[index] = filter[index];
+        index++;
+      } else {
+        break;
+      }
+  }
+
+
   const int2 thread_2D_pos = make_int2(idx_x,idx_y);
   if(thread_2D_pos.x >= numCols || thread_2D_pos.y >= numRows)
   {
@@ -147,7 +165,7 @@ void gaussian_blur(const unsigned char* const inputChannel,
 			int image_c = static_cast<int>(thread_2D_pos.x + (x));
 			clamp(image_c, numCols);
 
-			value_final += filter[(y + filter_half)*filterWidth + (x+filter_half)] * static_cast<float>(inputChannel[image_r*numCols + image_c]);
+			value_final += shared_filter[(y + filter_half)*filterWidth + (x+filter_half)] * static_cast<float>(inputChannel[image_r*numCols + image_c]);
 		}
 	}
 	outputChannel[thread_1D_pos] = value_final;
@@ -178,6 +196,8 @@ void separateChannels(const uchar4* const inputImageRGBA,
   greenChannel[thread_1D_pos] = inputImageRGBA[thread_1D_pos].y; 
   blueChannel[thread_1D_pos] = inputImageRGBA[thread_1D_pos].z; 
 }
+
+
 
 //This kernel takes in three color channels and recombines them
 //into one image.  The alpha channel is set to 255 to represent
@@ -251,11 +271,11 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
   // launching your kernel to make sure that you didn't make any mistakes.
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
-  int shared_size = (blockSize.x + filterWidth - 1)*(blockSize.y + filterWidth - 1) * sizeof(unsigned char);
+  int shared_size = filterWidth * filterWidth * sizeof(float);
   //TODO: Call your convolution kernel here 3 times, once for each color channel.
-  gaussian_blur<< <gridSize, blockSize >> > (d_red, d_redBlurred, numRows, numCols, d_filter, filterWidth);
-	gaussian_blur << <gridSize, blockSize >> > (d_green, d_greenBlurred, numRows, numCols, d_filter, filterWidth);
-	gaussian_blur << <gridSize, blockSize >> > (d_blue, d_blueBlurred, numRows, numCols, d_filter, filterWidth);
+  gaussian_blur<< <gridSize, blockSize,shared_size >> > (d_red, d_redBlurred, numRows, numCols, d_filter, filterWidth);
+	gaussian_blur << <gridSize, blockSize,shared_size >> > (d_green, d_greenBlurred, numRows, numCols, d_filter, filterWidth);
+	gaussian_blur << <gridSize, blockSize, shared_size>> > (d_blue, d_blueBlurred, numRows, numCols, d_filter, filterWidth);
   // Again, call cudaDeviceSynchronize(), then call checkCudaErrors() immediately after
   // launching your kernel to make sure that you didn't make any mistakes.
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());

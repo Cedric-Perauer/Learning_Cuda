@@ -72,17 +72,16 @@ void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_r
                             unsigned char* const d_greyImage, size_t numRows, size_t numCols)
 { 
   
-  const int width = 64; 
+  const int width = 32; 
   int size_x =  (int)(numRows/width + 1);
   int size_y =  (int)(numCols/width + 1);
 
   //You must fill in the correct sizes for the blockSize and gridSize
   //currently only one block with one thread is being launched
-  const dim3 blockSize(width, width, 1);  //TODO
-  const dim3 gridSize( size_x, size_y, 1);  //TODO
+  const dim3 blockSize(width, width);  //TODO
+  const dim3 gridSize( size_x, size_y);  //TODO
   rgba_to_greyscale<<<gridSize, blockSize>>>(d_rgbaImage, d_greyImage, numRows, numCols);
   
   cudaDeviceSynchronize(); 
-  
 
 }
