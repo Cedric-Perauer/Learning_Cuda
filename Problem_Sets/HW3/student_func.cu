@@ -130,7 +130,6 @@ __global__ void max_kernel(float * d_out, float *d_in)
    {
       d_out[blockIdx.x] = s_data[0]; 
    }
-
 }
 
 __global__ void histo_atomic(unsigned int *out_histo,const float *d_in, int num_bins, int size,float min_val,float range)

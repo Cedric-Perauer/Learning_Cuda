@@ -1,1 +1,0 @@
-/usr/bin/c++  -Ofast -fPIC  -rdynamic CMakeFiles/HW1.dir/common.cpp.o CMakeFiles/HW1.dir/HW1_generated_neighbor_reduction.cu.o  -o ../bin/HW1 /usr/local/cuda-10.1/lib64/libcudart_static.a -lpthread -ldl -lrt 

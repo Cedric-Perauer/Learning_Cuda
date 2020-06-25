@@ -61,17 +61,17 @@ set(CMAKE_COMMAND "/usr/bin/cmake") # path
 set(source_file "/home/cedric/Learning_Cuda/Problem_Sets/HW2/student_func.cu") # path
 set(NVCC_generated_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/HW2.dir//HW2_generated_student_func.cu.o.NVCC-depend") # path
 set(cmake_dependency_file "/home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/HW2.dir//HW2_generated_student_func.cu.o.depend") # path
-set(CUDA_make2cmake "/usr/share/cmake-3.10/Modules/FindCUDA/make2cmake.cmake") # path
-set(CUDA_parse_cubin "/usr/share/cmake-3.10/Modules/FindCUDA/parse_cubin.cmake") # path
+set(CUDA_make2cmake "/usr/share/cmake-3.16/Modules/FindCUDA/make2cmake.cmake") # path
+set(CUDA_parse_cubin "/usr/share/cmake-3.16/Modules/FindCUDA/parse_cubin.cmake") # path
 set(build_cubin OFF) # bool
-set(CUDA_HOST_COMPILER "/usr/bin/clang") # path
+set(CUDA_HOST_COMPILER "/usr/bin/cc") # path
 # We won't actually use these variables for now, but we need to set this, in
 # order to force this file to be run again if it changes.
 set(generated_file_path "/home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/HW2.dir//.") # path
 set(generated_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/HW2.dir//./HW2_generated_student_func.cu.o") # path
 set(generated_cubin_file_internal "/home/cedric/Learning_Cuda/build/Problem_Sets/HW2/CMakeFiles/HW2.dir//./HW2_generated_student_func.cu.o.cubin.txt") # path
 
-set(CUDA_NVCC_EXECUTABLE "/usr/local/cuda-10.1/bin/nvcc") # path
+set(CUDA_NVCC_EXECUTABLE "/usr/lib/cuda/bin/nvcc") # path
 set(CUDA_NVCC_FLAGS 
   -gencode;arch=compute_30,code=sm_30;  
   -gencode;arch=compute_35,code=sm_35;
@@ -82,7 +82,8 @@ set(CUDA_NVCC_FLAGS_MINSIZEREL  ; )
 set(CUDA_NVCC_FLAGS_RELEASE  ; )
 set(CUDA_NVCC_FLAGS_RELWITHDEBINFO  ; )
 set(nvcc_flags -m64) # list
-set(CUDA_NVCC_INCLUDE_DIRS "/usr/local/cuda-10.1/include;/usr/local/cuda-10.1/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include;/opt/intel/openvino_2019.3.376/opencv/include") # list (needs to be in quotes to handle spaces properly).
+set(CUDA_NVCC_INCLUDE_DIRS [==[/usr/lib/cuda/include;/usr/lib/cuda/include;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4;/usr/include/opencv4]==]) # list (needs to be in lua quotes to address backslashes)
+string(REPLACE "\\" "/" CUDA_NVCC_INCLUDE_DIRS "${CUDA_NVCC_INCLUDE_DIRS}")
 set(CUDA_NVCC_COMPILE_DEFINITIONS [==[]==]) # list (needs to be in lua quotes see #16510 ).
 set(format_flag "-c") # string
 set(cuda_language_flag ) # list
@@ -136,7 +137,7 @@ list(APPEND CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_${build_configuration}})
 list( FIND CUDA_NVCC_FLAGS "-ccbin" ccbin_found0 )
 list( FIND CUDA_NVCC_FLAGS "--compiler-bindir" ccbin_found1 )
 if( ccbin_found0 LESS 0 AND ccbin_found1 LESS 0 AND CUDA_HOST_COMPILER )
-  if (CUDA_HOST_COMPILER STREQUAL "$(VCInstallDir)bin" AND DEFINED CCBIN)
+  if (CUDA_HOST_COMPILER STREQUAL "" AND DEFINED CCBIN)
     set(CCBIN -ccbin "${CCBIN}")
   else()
     set(CCBIN -ccbin "${CUDA_HOST_COMPILER}")
@@ -190,15 +191,15 @@ cuda_execute_process(
 # For CUDA 2.3 and below, -G -M doesn't work, so remove the -G flag
 # for dependency generation and hope for the best.
 set(depends_CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
-set(CUDA_VERSION 10.1)
+set(CUDA_VERSION 10.2)
 if(CUDA_VERSION VERSION_LESS "3.0")
-  # Note that this will remove all occurances of -G.
+  # Note that this will remove all occurrences of -G.
   list(REMOVE_ITEM depends_CUDA_NVCC_FLAGS "-G")
 endif()
 
 # nvcc doesn't define __CUDACC__ for some reason when generating dependency files.  This
 # can cause incorrect dependencies when #including files based on this macro which is
-# defined in the generating passes of nvcc invokation.  We will go ahead and manually
+# defined in the generating passes of nvcc invocation.  We will go ahead and manually
 # define this for now until a future version fixes this bug.
 set(CUDACC_DEFINE -D__CUDACC__)
 

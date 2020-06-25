@@ -1,10 +1,10 @@
 file(REMOVE_RECURSE
+  "../../../bin/HW2"
+  "../../../bin/HW2.pdb"
   "CMakeFiles/HW2.dir/HW2_generated_student_func.cu.o"
+  "CMakeFiles/HW2.dir/compare.cpp.o"
   "CMakeFiles/HW2.dir/main.cpp.o"
   "CMakeFiles/HW2.dir/reference_calc.cpp.o"
-  "CMakeFiles/HW2.dir/compare.cpp.o"
-  "../../../bin/HW2.pdb"
-  "../../../bin/HW2"
 )
 
 # Per-language clean rules from dependency scanning.
