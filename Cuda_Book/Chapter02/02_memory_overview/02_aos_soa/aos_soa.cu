@@ -27,6 +27,7 @@ void complicatedCalculation(Coefficients_SOA*  data)
 
 
   int grayscale = (data[i].r + data[i].g + data[i].b)/data[i].maxVal;
+  // int grayscale = 0.2627 * data[i].r + 0.6780 * data[i].g + 0.0593 * data[i].b
   int hue_sat = data[i].hue * data[i].saturation / data[i].minVal;
   data[i].finalVal = grayscale*hue_sat; 
 }

@@ -1,0 +1,15 @@
+## Cuda Programming notes 
+
+### Profiling 
+
+Profile your code with NVPROF/NVVP to get timeline and metric analysis. 
+We can do so with NVVP, like this : 
+
+```bash 
+$ nvcc -o sgemm sgemm.cu 
+$ nvprof -o sgemm.vvp ./sgemm
+$ nvprof --analysis-metrics -o sgemm-analysis.nvvp ./sgemm
+```
+
+=> Make sure to have coalesced memory access (adjacent memory) to fully utilize the data bus. 
+

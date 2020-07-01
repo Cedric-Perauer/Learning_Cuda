@@ -7,7 +7,7 @@
 #define NUM_THREADS 256
 
 #define IMG_SIZE 1048576
-
+// this program only uses a 1D approach which can be improved 
 struct Coefficients_AOS {
   int* r;
   int* b;
@@ -27,6 +27,7 @@ void complicatedCalculation(Coefficients_AOS  data)
 
 
   int grayscale = (data.r[i] + data.g[i] + data.b[i])/data.maxVal[i];
+  //int grayscale = 0.2627 * data.r[i] + 0.6780 * data.g[i] + 0.593 * data.b[i]
   int hue_sat = data.hue[i] * data.saturation[i] / data.minVal[i];
   data.finalVal[i] = grayscale*hue_sat; 
 }
