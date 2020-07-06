@@ -18,7 +18,7 @@ __global__ void matrix_transpose_naive(int *in, int *out) {
 //shared memory, about 3x faster
 __global__ void matrix_transpose_shared(int *in, int *out) {
 	
-	__shared__ int shared_mem[BLOCK_SIZE][BLOCK_SIZE]; 
+	__shared__ int shared_mem[BLOCK_SIZE][BLOCK_SIZE+1]; 
 	
 	//global indeces
 	int idx_x = threadIdx.x + blockIdx.x * blockDim.x; 
