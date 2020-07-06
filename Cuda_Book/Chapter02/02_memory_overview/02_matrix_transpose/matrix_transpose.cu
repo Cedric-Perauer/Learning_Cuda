@@ -4,43 +4,40 @@
 #define N 2048
 #define BLOCK_SIZE 32 
 
-__global__ void matrix_transpose_naive(int *input, int *output) {
 
-	int indexX = threadIdx.x + blockIdx.x * blockDim.x;
-	int indexY = threadIdx.y + blockIdx.y * blockDim.y;
-	int index = indexY * N + indexX;
-	int transposedIndex = indexX * N + indexY;
+//naive way of implementing it, uncoalecesd memory access
+__global__ void matrix_transpose_naive(int *in, int *out) {
+	int index_x = threadIdx.x + blockDim.x * blockIdx.x; 
+	int index_y = threadIdx.y + blockDim.y * blockIdx.y; 
 
-        output[index] = input[transposedIndex];
+	int idx = index_x + index_y * N;
+	int idx_transpose = index_x * N + index_y; //just swith x and y indeces
+	out[idx] = in[idx_transpose]; 
 }
 
-__global__ void matrix_transpose_shared(int *input, int *output) {
+//shared memory, about 3x faster
+__global__ void matrix_transpose_shared(int *in, int *out) {
+	
+	__shared__ int shared_mem[BLOCK_SIZE][BLOCK_SIZE]; 
+	
+	//global indeces
+	int idx_x = threadIdx.x + blockIdx.x * blockDim.x; 
+	int idx_y = threadIdx.y + blockIdx.y * blockDim.y; 
+	
+	//local indeces 
+	int local_x = threadIdx.x; 
+	int local_y = threadIdx.y; 
+	int idx = idx_x + idx_y * N; 
+	int idx_transpose = idx_x * N + idx_y; 
 
-	__shared__ int sharedMemory [BLOCK_SIZE] [BLOCK_SIZE];
+	//write input into shared memory, coalesced access 
+	shared_mem[local_x][local_y] = in[idx]; 
+	__syncthreads(); 
 
-	//global index	
-	int indexX = threadIdx.x + blockIdx.x * blockDim.x;
-	int indexY = threadIdx.y + blockIdx.y * blockDim.y;
-	//trnsposed global memory index
-	int tindexX = threadIdx.x + blockIdx.y * blockDim.x;
-	int tindexY = threadIdx.y + blockIdx.x * blockDim.y;
+	//copy over into global mem for the output
+	out[idx_transpose] = shared_mem[local_y][local_x]; 
 
-	//local index
-	int localIndexX = threadIdx.x;
-	int localIndexY = threadIdx.y;
-
-	int index = indexY * N + indexX;
-	int transposedIndex = tindexY * N + tindexX;
-
-	//transposed the matrix in shared memory. Global memory is read in coalesced fasshion
-	sharedMemory[localIndexX][localIndexY] = input[index];
-
-	__syncthreads();
-
-	//output written in global memory in coalesed fashion. 
-	output[transposedIndex] = sharedMemory[localIndexY][localIndexX];
 }
-
 //basically just fills the array with index.
 void fill_array(int *data) {
 	for(int idx=0;idx<(N*N);idx++)
@@ -62,43 +59,39 @@ void print_output(int *a, int *b) {
 	}
 }
 int main(void) {
-	int *a, *b;
-        int *d_a, *d_b; // device copies of a, b, c
+	int *a; 
+	int *b; 
 
-	int size = N * N *sizeof(int);
+	int *d_a;
+        int *d_b; 
+	
+	int size = N * N * sizeof(int); 
+	
+	//host arrays
+	a = (int *) malloc(size); 
+	fill_array(a); 
+	b = (int *) malloc(size); 	
+	
+	//device array allocation 
+	cudaMalloc((void **)&d_a,size); 	
+	cudaMalloc((void **)&d_b,size);
 
-	// Alloc space for host copies of a, b, c and setup input values
-	a = (int *)malloc(size); fill_array(a);
-	b = (int *)malloc(size);
+	//copy inputs to device
+	cudaMemcpy((void **)&d_a,a,size,cudaMemcpyHostToDevice);	
+	cudaMemcpy((void **)&d_b,b,size,cudaMemcpyHostToDevice);	
 
-        // Alloc space for device copies of a, b, c
-        cudaMalloc((void **)&d_a, size);
-        cudaMalloc((void **)&d_b, size);
+	//declare sizes
+	dim3 blocksize(BLOCK_SIZE,BLOCK_SIZE,1); 
+	dim3 gridsize(N/BLOCK_SIZE,N/BLOCK_SIZE,1); 
 
-       // Copy inputs to device
-        cudaMemcpy(d_a, a, size, cudaMemcpyHostToDevice);
-        cudaMemcpy(d_b, b, size, cudaMemcpyHostToDevice);
+	//launch the kernel 
+	matrix_transpose_shared<<<gridsize,blocksize>>>(d_a,d_b);
 
-	dim3 blockSize(BLOCK_SIZE,BLOCK_SIZE,1);
-	dim3 gridSize(N/BLOCK_SIZE,N/BLOCK_SIZE,1);
-
-	matrix_transpose_naive<<<gridSize,blockSize>>>(d_a,d_b);
-
-        // Copy result back to host
-        //cudaMemcpy(b, d_b, size, cudaMemcpyDeviceToHost);
-
-	//print_output(a,b);
-
-
-	matrix_transpose_shared<<<gridSize,blockSize>>>(d_a,d_b);
-
-        // Copy result back to host
-        cudaMemcpy(b, d_b, size, cudaMemcpyDeviceToHost);
-
-	//print_output(a,b);
-
-	free(a); free(b);
-        cudaFree(d_a); cudaFree(d_b); 
+	//copy results back to host 
+	cudaMemcpy(b,d_b,size,cudaMemcpyDeviceToHost); 		
+	
+	free(a); free(b); 
+	cudaFree(d_a); cudaFree(d_b); 	
 
 	return 0;
 }
