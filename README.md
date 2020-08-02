@@ -36,3 +36,12 @@ are read only. Loading through this cache can be forced with :
 __ldg
 ```
 Best used when one warp reads from same address/data (broadcast of all of the threads). Otpimized for 2D/3D locality. Optimal for Image Processing for example, supports bilinear/trilinear interpolation. 
+
+##### Texture Dim : defines array dimension (1D,2D,3D) 
+##### Texture type : defines texel in terms of floating point or basic int 
+##### Texture Read Mode : defines read mode as ```NormalizedFloat (range 0 to 1)``` or ```ModeElement (range -1 to 1)``` 
+##### Texture Addressing Mode : defines out of range addressing such as clamping, warping, mirroring 
+##### Texutre Filtering Mode : how return value is computer when fetching the texture (interpolation is possible in linear mode) 
+
+
+
