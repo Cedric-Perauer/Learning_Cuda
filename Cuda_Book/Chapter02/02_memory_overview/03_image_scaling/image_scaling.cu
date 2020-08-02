@@ -56,7 +56,7 @@ int main(int argc, char*argv[])
 	memset(&resDesc, 0, sizeof(resDesc));
 	resDesc.resType = cudaResourceTypeArray;
 	resDesc.res.array.array = cu_array;
-	//Step 2 Specify texture object parameters
+	//Step 2 Specify texture object parameters                  
 	struct cudaTextureDesc texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
 	texDesc.addressMode[0] = cudaAddressModeClamp;
