@@ -126,8 +126,8 @@ __global__ void init(int n, float *x, float *y) {
     } 
 }
 ```
-Each warp manages 64 KB.  
-
+Each warp manages 64 KB. (warp 1 the first 64 KB, warp 2 the next 64 KB, ...) 
+This leads to each warp only accessing memory within the same pages. This is necessary as the driver can not always determine wheter data can be sent to the GPU, especially when the access pattern is more complicated. Above each thread in a warp loops to populate the index  within the  same 64KB. This reduces both init time and GPU fault group. 
 
 #### Data prefetching 
 
@@ -138,5 +138,77 @@ cudaMemPrefetchAsync();
 
 if we know what memory will be used on which device, we can prefetch it. 
 With unified memory, the limited GPU memory can be extended. 
-You can get higher performance with unified memory, with prefetching and hints were data is located (cudaMemAdvice()) can help in multi processor cases a lot. 
+You can get higher performance with unified memory, with prefetching and hints where data is located (cudaMemAdvice()) can help in multi processor cases a lot. 
+
+Use the following for profiling the code : 
+
+```sh
+nvprof --print-gpu-trace
+```
+
+Using prefetching and the warp per page conept we can see the clear advantages with our optimized code when profiling : 
+
+Standard version (not full output as there are many Page faults):  
+
+![](Cuda_Book/images/unified2.png)
+
+Optimized version : 
+
+![](Cuda_Book/images/unified1.png)
+ 
+
+## CUDA Thread Programming
+
+One SM can execute thread blocks arbitraliy depending on ressources that can be afforded. Also the number of thread blocks executed in parallel depends ont eh ressource available. The number of SMS is obviously a Hardware limit, e.g. a Tesla V100 has 80 and a 2080 TI has 48. 
+
+Cuda threads are grouped in warps (32 threads). It is the basic control unit in CUDA and the optimal thread block size is determined by fully utilizing the blocks warp scheduling. Cuda threads in a warp run in parallel and have synchronous operations inherently. The area is called warp-level primitive programming.  
+
+
+Looking at the output of : cuda_thread_block.cu (with block size of 4 and tread block size of 128) and we can see the following : 
+
+![](Cuda_Book/images/thread_block.png)
+
+We can conclude that CUDA threads are launched in warp size and the order is not determined :   
+
+=> out of order block execution : thread blocks are not run in order   (2nd column) 
+=> out of order warp index with a thread block : warp's orders varies across blocks. Therefore    there is no guarantee of warp execution order (3rd column)
+=> grouped threads executed in a warp (last column), only two indices are printed to limit the output      
+
+Summary : CUda threads are grouped into 32 threads, output of them and warp's exectuion order is out of order. Programmers have to be aware of this 
+
+
+### Cuda Occupancy 
+
+Is the ratio of active CUDA warps to the maximum warps that each SM can execute concurrently. Higher occupancy means more efficiency in genernal, but it can decrease performance due to high ressource usage between the threads. Therefore the programmer needs to make sure that warp instructions are issued efficiently. Scheduling multiple warps efficiently can hide latencies such as from memory or instructions. Occupancy can be determined theoretically or practically using a profiler such as nsight commpute which is recommended for Turing and probably Ampere when it is released. 
+Theoretical occupancy can be seen as the maximum upper bound as it does not consider memory/instruction latencies. 
+
+Compile with : 
+```sh 
+nvcc -m 64 --resource-usage -gencode arch=compute_75,code=sm_75 -I/usr/local/cuda/samples/common/inc -o sgemm ./sgemm.cu
+```
+
+when using Linux and a Turing architecture chip (75). 
+
+This show us this, which is the number of registers per thread and constant memory usage : 
+
+
+![](Cuda_Book/images/out1.png)
+
+
+Also an excel tool can be used which is in /usr/local/cuda/tools in Linux for theoretical analysis. Note that in practice 100% occupancy can not be achieved in practice. 
+
+### Bounding register usage 
+
+When the kernel is complicated or double precision is used, register use can increase and so does occupancy. In order to usage tune the GPU ```__launch_bound__``` : 
+```C++ 
+int maxThreadperBlock=256; 
+int minBlocksPerSM = 2; 
+__global__ void __launch_bound__(maxThreadperBlock,minBlocksPerSM) foo_kernel() [
+    ...
+]
+```
+
+can be used as a qualifier for the kernel function. This will let nvcc guarantee a minimum size of thread blocks per SM with the max block size. NVCC will find the optimial configuaration to guarantee this. It then checks the upper-bound ressources and reduces the limiting resource usage per block. If this bound is not reached the compiler can adjust the register usage and schedule an extra thread block per SM, if the second parameter is not given. Alternatively it can increase register usage to hide single-thread latency. We can also limit the # of occupied registers woth --maxrregcount during compilation. 
+
+SMs can stall and can not conceal memory access latency due to hampered memory requests. 
 
