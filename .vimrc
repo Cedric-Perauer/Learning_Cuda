@@ -1,11 +1,14 @@
+
 set nocompatible              " be iMproved, required
 filetype off                  " required
 
 " set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
 autocmd vimenter * NERDTree
-nmap <F6> :NERDTreeToggle<CR>
+nmap <C-a> :NERDTreeToggle<CR>
 
+set encoding=UTF-8
+set number
 "Nerd Commenter 
 " Add spaces after comment delimiters by default
 let g:NERDSpaceDelims = 1
@@ -28,6 +31,15 @@ let g:NERDCommentEmptyLines = 1
 " Enable trimming of trailing whitespace when uncommenting
 let g:NERDTrimTrailingWhitespace = 1
 
+" Enable rainbow active 
+let g:rainbow_active = 1
+
+"VIm airline 
+let g:airline#extensions#tabline#enabled =  1
+
+"Vim airline theme
+let g:airline_theme='simple'
+let g:airline_solarized_bg='dark'
 " Enable NERDCommenterToggle to check all selected lines is commented or not 
 let g:NERDToggleCheckAllLines = 1
 
@@ -59,14 +71,17 @@ Plugin 'rstacruz/sparkup', {'rtp': 'vim/'}
 " Plugin 'ascenator/L9', {'name': 'newL9'}
 Plugin 'preservim/nerdcommenter'
 Plugin 'frazrepo/vim-rainbow'
+Plugin 'vim-airline/vim-airline'
+Plugin 'vim-airline/vim-airline-themes'
+Plugin 'ryanoasis/vim-devicons'
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
 filetype plugin indent on    " required
-au FileType c,cpp,objc,objcpp,cu,cc call rainbow#load()
 
 call plug#begin('~/.vim/plugged')
 Plug 'preservim/nerdcommenter'
 call plug#end()
+
 
 " To ignore plugin indent changes, instead use:
 "filetype plugin on
