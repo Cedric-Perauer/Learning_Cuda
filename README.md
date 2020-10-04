@@ -204,11 +204,25 @@ When the kernel is complicated or double precision is used, register use can inc
 int maxThreadperBlock=256; 
 int minBlocksPerSM = 2; 
 __global__ void __launch_bound__(maxThreadperBlock,minBlocksPerSM) foo_kernel() [
-    ...
 ]
 ```
 
 can be used as a qualifier for the kernel function. This will let nvcc guarantee a minimum size of thread blocks per SM with the max block size. NVCC will find the optimial configuaration to guarantee this. It then checks the upper-bound ressources and reduces the limiting resource usage per block. If this bound is not reached the compiler can adjust the register usage and schedule an extra thread block per SM, if the second parameter is not given. Alternatively it can increase register usage to hide single-thread latency. We can also limit the # of occupied registers woth --maxrregcount during compilation. 
 
 SMs can stall and can not conceal memory access latency due to hampered memory requests. 
+
+Achieved occupancy from the compiler :   
+ 
+Can be optained using the Visual Profiler. : Page 99 in the book for detailed explanations 
+
+It can be used for occupancy tuning in order to fully utilize warp scheduling. However memory throttling issues can not be fixed thru this. 
+We can again conclude that SMs can stall and can not conceal memory access latency due to hampered memory requests. This can be optimized by using Parallel Programming Patterns. 
+
+
+### Parallel Reduction 
+
+Parallel way can reduce number of steps, approaches : 
+
+1) naive with global memory
+2) reduce kernels with shared memory 
 
