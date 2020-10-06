@@ -224,5 +224,49 @@ We can again conclude that SMs can stall and can not conceal memory access laten
 Parallel way can reduce number of steps, approaches : 
 
 1) naive with global memory
-2) reduce kernels with shared memory 
+2) reduce kernels with shared memory : 
+reduces global memory bandwith and therefore latency 
+
+### Performance Measure 
+
+CUDA sample timer helper function is used 
+
+```C++
+StopWatchInterface *timer; 
+sdkCreateTimer(&timer); 
+sdkStartTimer(&timer);
+
+//Code is executed 
+
+//Getting elapsed time 
+cudaDeviceSynchronize(); //blocks host until GPU is done 
+work 
+sdkStopTimer(); 
+//get execution time in µs 
+float exe_time = sdkGetTimerValue(&timer); 
+
+//Terminate the timer 
+sdkDeleteTimer(&timer);
+```
+
+
+### Identify the Performance Bottleneck 
+
+4 types of limiters exist : 
+
+- Compute Bound 
+- Latency Bound
+- Bandwith Bound 
+- Compute and latency bound 
+
+Strategy : 
+If one ressource is the limiter, we focus on that one. If both are under-used, we can apply latency optmization for I/O of the system. If both are high, we need to see if there is a memory or compute related issue. 
+
+In order to determine this nvprof is used. 
+
+
+
+
+
+
 

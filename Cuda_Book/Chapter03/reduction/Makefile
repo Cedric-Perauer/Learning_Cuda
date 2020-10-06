@@ -1,4 +1,4 @@
-CUDA_PATH=/usr/lib/cuda-10.2
+CUDA_PATH=/usr/local/cuda-10.2
 HOST_COMPILER ?= g++
 NVCC=${CUDA_PATH}/bin/nvcc -ccbin ${HOST_COMPILER}
 TARGET=reduction_global reduction_shared
