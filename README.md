@@ -262,10 +262,103 @@ sdkDeleteTimer(&timer);
 Strategy : 
 If one ressource is the limiter, we focus on that one. If both are under-used, we can apply latency optmization for I/O of the system. If both are high, we need to see if there is a memory or compute related issue. 
 
-In order to determine this nvprof is used. 
+In order to determine this nvprof is used, the analysis view is a good way of getting the necessary information .  
+
+NVPROF performance device access issue quick fix : [here](https://forums.developer.nvidia.com/t/err-nvgpuctrperm-the-user-does-not-have-permission-to-profile-on-the-target-device/76285/4) 
+
+We can see that global is heavily memory bound as we predicted, however normal shared is very compute bound. Therefore shared is changed from : 
+
+```C++
+__global__ void reduction_kernel(float *d_out, float *d_in , unsigned int size) {
+        unsigned int idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+
+        extern __shared__ float s_data[];
+
+        s_data[threadIdx.x] = (idx_x < size) ? d_in[idx_x] : 0.0;
+
+        __syncthreads();
+
+      for(unsigned int stride = 1; stride < blockDim.x; stride *= 2) 
+ {
+        // thread synchronous reduction
+        if ( (idx_x % (stride * 2)) == 0 )
+            s_data[threadIdx.x] += s_data[threadIdx.x + stride];
+ }
+  __syncthreads();
+        if (threadIdx.x == 0)
+           d_out[blockIdx.x] = s_data[0];
+} 
+ 
+```
+which is heavy due to the modulo operator. As stride is an exponential of 2, it is replaced with a lightweight bitwise operator as follows : 
+
+```C++
+__global__ void reduction_kernel(float *d_out, float *d_in , unsigned int size) {
+        unsigned int idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+
+        extern __shared__ float s_data[];
+
+        s_data[threadIdx.x] = (idx_x < size) ? d_in[idx_x] : 0.0;
+
+        __syncthreads();
+
+ for(unsigned int s = 1; s < blockDim.x; s *= 2)
+        {
+                if((idx_x & (s * 2 -1))==0)
+                         s_data[threadIdx.x] += s_data[threadIdx.x + s];
+        }
+         __syncthreads();
+        if (threadIdx.x == 0)
+           d_out[blockIdx.x] = s_data[0];
+} 
+```
+
+This kernel is both compute and latency bound, so we can say that we can increase memory usage by optimizing compute efficiency. 
+
+### Minimizing the warp divergence effect 
+
+In SIMT, if a branch isi encountered branch divergence can occur. This needs to minimized by : 
+
+- avoid by hanlding different warps to execute branch 
+- coalescing the branch to reduce branches in a warp 
+- shorten the branch, so less occur 
+- rearrang the data to improve the access pattern 
+- partition the data into groups using tiled_operation in Cooperative Group 
+
+In our last example the divergence is about 73%, reduction addressing is the issue here : 
+
+```C+
+     if((idx_x & (s * 2 -1))==0)
+```
+
+This addressing can be done with : 
+
+- inteleaved or 
+- sequential addressing
 
 
+Interleaved : 
+large strided values are used, it is slower than the previous approach as each block is not fully utilized. 
 
+Sequential : 
+Coalesced indexing and addressing, leads to faster execution time. Thanks to avoidance of warp divergence we are also about 12x faster than the original approach.  
+Control flow is reduced and memory is utilized more. 
+
+
+### Roofline model 
+
+Is used to determine what we should be bounded to. If an implementation does not meet this model, we can say that it is latency bound.
+Looking at the profiler, we can see that ememory bandwith is not used perfectly, which should be improved next.   
+![](Cuda_Book/images/Example_of_a_Roofline_model.svg.png)
+
+### Grid strided loops
+
+To achieve this grid-strided loops are used. It accumulates data first and then reduces it. 
+In order to choose the grid size, we use : 
+``` C++ 
+cudaOccupancyMaxActiveBlocksPerMultiprocessor()
+```
+API, that way we can use all multiprocessors in our GPU. 
 
 
 
