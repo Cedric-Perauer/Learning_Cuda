@@ -348,17 +348,26 @@ Control flow is reduced and memory is utilized more.
 ### Roofline model 
 
 Is used to determine what we should be bounded to. If an implementation does not meet this model, we can say that it is latency bound.
-Looking at the profiler, we can see that ememory bandwith is not used perfectly, which should be improved next.   
+Looking at the profiler, we can see that memory bandwith is not used perfectly, which should be improved next.   
 ![](Cuda_Book/images/Example_of_a_Roofline_model.svg.png)
 
 ### Grid strided loops
 
-To achieve this grid-strided loops are used. It accumulates data first and then reduces it. 
+To achieve this grid-strided loops are used. It accumulates data first and then reduces it. It allows for control over multi cores. 
 In order to choose the grid size, we use : 
 ``` C++ 
 cudaOccupancyMaxActiveBlocksPerMultiprocessor()
 ```
 API, that way we can use all multiprocessors in our GPU. 
+
+### Balance I/O throughput 
+
+Local variable input has a large amount of store and load requests, which impacts thread block scheduling. The current data accumulation depends on device memory, to change this extra registers are used to issue more load instructions. The code in folder 07 uses 3 more registers to collect global memory data. This has a small impact but further optimizes the code. 
+
+### Warp-level primitive programming 
+
+
+
 
 
 
