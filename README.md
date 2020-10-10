@@ -1,4 +1,4 @@
-## Cuda Study Repo 
+## Cuda Book Summary
 
 #### Streaming Multiprocessor (SM) 
 CUDA GPUs are based on scalable arrays of multithreaded SMs. Each SM consists of several CUDA cores. 
