@@ -366,6 +366,34 @@ Local variable input has a large amount of store and load requests, which impact
 
 ### Warp-level primitive programming 
 
+Warp synch was introduced with Cuda 9.0, it aims to avoid relying on implicit warp synch operations and handling synch targets explicitly. Therefore it prevents race conditions and deadlocks in warp-wise synch. The new GPUs (since Volta) have enhanced thread control, which means each thread can execute different instructions while staying in SIMT model.  Before that, CUDA threads were scheduled at warp level, leading to deadlock potential. As to if the old GPUs can use independent thread scheduling with CUda 9+ is not mentioned. 
+
+Different operations are used in the independent thread scheduling to identify/mask active threads, synch data exchange and thread execution. 
+
+3 categories of warp-wise primitive functions exist : 
+
+- identification
+- operations 
+- synchronization 
+
+### Parallel Reduction 
+
+```C++ 
+shfl_down_sync(m,val,num) // shfl_down() API 
+```
+
+can be used to improve the parallel reduction implementation. This operation allows threads to shift a certain register value to another thread in the same warp and sync with it. 3 steps (2 necessary are required) : 
+
+1) identfiy/mask/ballot sourcing CUDA threads in a warp that will have an operation 
+2) let CUDA thread shift data 
+3) all the CUDA threads in a warp are synched(optional)
+
+Each warp stores its result in shared mem, the final result is calculated by executing warp-wise collection. 
+
+
+
+
+
 
 
 
