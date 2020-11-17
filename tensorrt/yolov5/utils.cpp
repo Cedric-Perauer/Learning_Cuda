@@ -6,63 +6,135 @@
 
 
 class Metric_Tracker { 
-	public: 
+public: 
+         
+std::vector<std::vector<float>> labels = {}; 
+int tp = 0; 
+int fp = 0; 
+int fn = 0; 
+int height = 0;
+int width = 0;
 
-	Metric_Tracker(){
-	}
+//constructors
+Metric_Tracker(){}
 
-	~Metric_Tracker(){} 
+~Metric_Tracker(){} 
 		
 //takes filename and returns vector for bounding box 
-std::vector<std::vector<float>> get_gt(const std::string &filename)
+void get_gt(const std::string &filename,const cv::Mat &img)
 {
  
+ width = img.cols; 
+ height = img.rows;
+ labels = {}; 
  std::size_t pos = filename.find(".");
  std::string f = filename.substr(0,pos); 
- std::string base_path = "/home/cedric/tensorrtx/yolov5/labels/"; 
- 
+ std::string base_path = "/home/cedric/Learning_Cuda/tensorrt/yolov5/labels/"; 
+  
  //open correct label file and read data into vector 
- std::vector<std::vector<float>> labels; 
- std::cout << f << std::endl;
  std::ifstream myfile(base_path + f +".txt"); 
  std::string line;
  if(myfile.is_open()) {
 	 while(std::getline(myfile,line,'\r'))
-	 {
-		 std::cout << line << "\n"; 
+	 {       std::istringstream iss(line); 
+		 std::vector<float> label; 
+		 for(std::string s; iss >> s; ) 
+                 { 
+		   label.push_back(std::stof(s)); 
+	         }
+		 labels.push_back(label); 
 	 }
            }
-
  myfile.close();
-return labels; 
+}
+
+//printing function 
+void print_labels(const std::vector<std::vector<float>> &labels){
+       for(auto label : labels) 
+       { 
+	       for(auto a : label)  
+	       { 
+		       std::cout << a << " "; 
+	       } 
+	       std::cout << "\n";
+       } 	       
+
+} 	
+
+
+void print_label(const std::vector<float> &label)
+{
+	for(auto a: label) 
+	{
+		std::cout << a << std::endl;
+
+	}
 }
 
 
 //compute IOU 
-float iou(const std::vector<float> &pred, const std::vector<float> & ground_truth)
+void iou(const cv::Rect &pred_r)
 {
+ float max_iou = 0.0;  
+ int idx = 0;
+ std::vector<std::vector<float>>::iterator cur; 
+ for(auto gt = labels.begin(); gt != labels.end(); gt++)  
+ {
+ 
+  std::vector<float> pred = {pred_r.x, pred_r.y,pred_r.width + pred_r.x, pred_r.height + pred_r.y};
+  float w = gt->at(3) * width;  
+  float h = gt->at(4) * height;  
+  float xt = gt->at(1) * width- w/2.0;  
+  float yt = gt->at(2) * height - h/2.0;  
+  float xbot = gt->at(1) * width + w/2.0;  
+  float ybot = gt->at(2) * height + h/2.0; 
+  
+  std::vector<float> ground_truth = {xt,yt,xbot,ybot};
+
+
  float xa = std::max(pred[0],ground_truth[0]);
  float ya = std::max(pred[1],ground_truth[1]);
  float xb = std::min(pred[2],ground_truth[2]);
  float yb = std::min(pred[3],ground_truth[3]);
 
- float intersection = std::max(static_cast<float>(0.0),xa-xb + 1) * std::max(static_cast<float>(0.0),yb-ya + 1);
-
- int area_a = (pred[2]-pred[0] + 1) * (pred[3]-pred[1] + 1); 
- int area_b = (ground_truth[2]-ground_truth[0] + 1) * (ground_truth[3]-ground_truth[1] + 1); 
-
- float iou = intersection/(area_a + area_b - intersection);
-
- return iou; 
+ float intersection = std::max(static_cast<float>(0.0),xb-xa) * std::max(static_cast<float>(0.0),yb-ya);
+ int area_a = (pred[2]-pred[0] ) * (pred[3]-pred[1] ); 
+ int area_b = (ground_truth[2]-ground_truth[0] ) * (ground_truth[3]-ground_truth[1] ); 
+ 
+ float iou = intersection/static_cast<float>(area_a + area_b - intersection);
+ if (iou > max_iou)
+ {
+	 max_iou = iou;
+	 cur = gt; 
+ }
 
 }
-
-float calc_metrics(const int &tp, const int &fp, const int &fn)
+if (max_iou < 0.5)
 {
-	float prec = (static_cast<float>(tp)/(tp+fp)); 
-	float recall = (static_cast<float>(tp)/(tp+fn)); 
-        float f1 = 2 * (prec *recall) /(prec + recall); 
+ fp++; 
+}
+else if (max_iou >= 0.5){
+ tp++; 
+ labels.erase(cur);
+}
+}
 
+//number of fps 
+float fn_calc(){
+       fn += labels.size();
+}
+
+
+
+//metrics
+void calc_metrics()
+{       
+	std::cout << "fps : " <<fp << std::endl;
+	std::cout << "tps : " << tp << std::endl;
+	float prec = static_cast<float>(tp)/ static_cast<float>(tp+fp); 
+	float recall = static_cast<float>(tp)/static_cast<float>(tp+fn); 
+        float f1 = 2 * (prec *recall) /(prec + recall); 
+	std::cout << "Precision :" << prec << " recall :" << recall << std::endl;
 }
 }; 
 

@@ -519,18 +519,22 @@ int main(int argc, char** argv) {
             //std::cout << res.size() << std::endl;
             cv::Mat img = cv::imread(std::string(argv[2]) + "/" + file_names[f - fcount + 1 + b]);
 	    std::string file_name = file_names[f - fcount + 1 + b];
-            auto vec = tracker.get_gt(file_name); 
+            tracker.get_gt(file_name,img); 
 		    
-	    std::cout << "file name" << file_name << std::endl;  
+	    std::cout  << file_name << std::endl;  
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
-                cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
+                tracker.iou(r); 
+	       	cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
                 cv::putText(img, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
+            tracker.fn_calc(); 
             cv::imwrite("_" + file_names[f - fcount + 1 + b], img);
         }
         fcount = 0;
     }
+    
+    tracker.calc_metrics(); 
 
     // Release stream and buffers
     cudaStreamDestroy(stream);
