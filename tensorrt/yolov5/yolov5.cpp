@@ -5,10 +5,10 @@
 #include "common.hpp"
 #include "utils.cpp"
 
-#define USE_FP16  // comment out this if want to use FP32
+#define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
-#define NMS_THRESH 0.4
-#define CONF_THRESH 0.5
+#define NMS_THRESH 0.5
+#define CONF_THRESH 0.3
 #define BATCH_SIZE 1
 
 #define NET s  // s m l x
@@ -529,10 +529,12 @@ int main(int argc, char** argv) {
                 cv::putText(img, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
             tracker.fn_calc(); 
+	    tracker.plot_gt(img); 
             cv::imwrite("_" + file_names[f - fcount + 1 + b], img);
         }
         fcount = 0;
     }
+    
     
     tracker.calc_metrics(); 
 
