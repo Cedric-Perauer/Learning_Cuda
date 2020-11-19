@@ -15,7 +15,30 @@ int fn = 0;
 int height = 0;
 int width = 0;
 std::vector<std::vector<float>> gts = {}; 
+
+std::vector<std::vector<float>> gts_0 = {}; 
+std::vector<std::vector<float>> gts_1 = {}; 
+std::vector<std::vector<float>> gts_2 = {}; 
+std::vector<std::vector<float>> gts_3 = {}; 
+std::vector<std::vector<float>> gts_4 = {}; 
+
+
+
+std::vector<std::vector<float>> preds_0 = {}; 
+std::vector<std::vector<float>> preds_1 = {}; 
+std::vector<std::vector<float>> preds_2 = {}; 
+std::vector<std::vector<float>> preds_3 = {}; 
+std::vector<std::vector<float>> preds_4 = {}; 
+
+std::vector<std::vector<std::vector<float>>> class_preds = {}; 
+
+std::string base_path = "/home/cedric/Learning_Cuda/tensorrt/yolov5/labels_pred/"; 
+
 int i = 0;
+std::vector<std::vector<std::vector<float>>> class_gts = {}; 
+
+std::vector<std::vector<float>> preds = {};  
+
 
 //constructors
 Metric_Tracker(){}
@@ -28,13 +51,20 @@ void get_gt(const std::string &filename,const cv::Mat &img)
  gts = {};  
  width = img.cols; 
  height = img.rows;
- labels = {}; 
+ labels = {};
+ gts_0 = {};  
+ gts_1 = {};  
+ gts_2 = {};  
+ gts_3 = {};  
+ gts_4 = {}; 
+ preds = {}; 
+
  std::size_t pos = filename.find(".");
  std::string f = filename.substr(0,pos); 
- std::string base_path = "/home/cedric/Learning_Cuda/tensorrt/yolov5/labels/"; 
   
+std::string base = "/home/cedric/Learning_Cuda/tensorrt/yolov5/labels/"; 
  //open correct label file and read data into vector 
- std::ifstream myfile(base_path + f +".txt"); 
+ std::ifstream myfile(base + f +".txt"); 
  std::string line;
  if(myfile.is_open()) {
 	 while(std::getline(myfile,line,'\r'))
@@ -42,13 +72,62 @@ void get_gt(const std::string &filename,const cv::Mat &img)
 		 std::vector<float> label; 
 		 for(std::string s; iss >> s; ) 
                  { 
-		   label.push_back(std::stof(s)); 
+		   label.push_back(std::stof(s));
+		   if(label[0] == 0)  //blue
+		   {
+                    gts_0.push_back(label);  
+		   }
+		   else if(label[0] == 1) //orange 
+		   {
+
+                    gts_1.push_back(label);  
+		   }
+		   else if(label[0] == 2) //large orange
+		   {
+
+                    gts_2.push_back(label);  
+		   }
+		   else if(label[0] == 3)  //yellow
+		   {
+
+                    gts_3.push_back(label);  
+		   }
+		   else if(label[0] == 4)  //unknown 
+	           {
+                     gts_4.push_back(label); 
+		   }
+
 	         }
 		 labels.push_back(label); 
 	 }
            }
  myfile.close();
 }
+
+//create gt files 
+void create_gt_files(const std::string &filename) { 
+ std::size_t pos = filename.find("."); 
+ std::string f = filename.substr(0,pos); 
+ std::ofstream myfile(base_path + f + ".txt");  
+ for(auto lab : preds) 
+ {   
+     for(auto vals : lab) 
+     { 
+        myfile << vals << " "; 
+     } 	     
+     myfile << "\n"; 
+ } 
+ myfile.close();
+} 
+
+//add prediction 
+void add_pred(const cv::Rect &pred_r,const int &cls){ 
+
+
+  std::vector<float> pred = {pred_r.x, pred_r.y,pred_r.width + pred_r.x, pred_r.height + pred_r.y,1.0,cls};
+  preds.push_back(pred);  
+} 
+
 
 //printing function 
 void print_labels(const std::vector<std::vector<float>> &labels){
@@ -86,7 +165,6 @@ void plot_gt(cv::Mat &img)
 		       	
         
 }
-
 
 
 //compute IOU 
@@ -129,6 +207,10 @@ void iou(const cv::Rect &pred_r)
 
 }
 i++; 
+
+std::cout << "max iou = " << max_iou << std::endl;
+
+
 if (max_iou < 0.5)
 {
  fp++; 
@@ -137,6 +219,10 @@ else if (max_iou >= 0.5){
  tp++; 
  labels.erase(cur);
 }
+std::cout << "fp=" << fp << std::endl;
+std::cout << "tp=" << tp << std::endl;
+std::cout << "labels=" << labels.size() << std::endl;
+
 }
 
 //number of fps 

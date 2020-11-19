@@ -7,8 +7,8 @@
 
 #define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
-#define NMS_THRESH 0.5
-#define CONF_THRESH 0.3
+#define NMS_THRESH 0.65
+#define CONF_THRESH 0.25
 #define BATCH_SIZE 1
 
 #define NET s  // s m l x
@@ -524,20 +524,17 @@ int main(int argc, char** argv) {
 	    std::cout  << file_name << std::endl;  
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
-                tracker.iou(r); 
-	       	cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
+	       	tracker.add_pred(r,(int)res[j].class_id);
+		cv::rectangle(img, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
                 cv::putText(img, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
-            tracker.fn_calc(); 
-	    tracker.plot_gt(img); 
+	    tracker.create_gt_files(file_name); 
             cv::imwrite("_" + file_names[f - fcount + 1 + b], img);
         }
         fcount = 0;
     }
     
     
-    tracker.calc_metrics(); 
-
     // Release stream and buffers
     cudaStreamDestroy(stream);
     CHECK(cudaFree(buffers[inputIndex]));
