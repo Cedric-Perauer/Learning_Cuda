@@ -7,8 +7,8 @@
 
 #define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
-#define NMS_THRESH 0.65
-#define CONF_THRESH 0.25
+#define NMS_THRESH 0.5
+#define CONF_THRESH 0.4
 #define BATCH_SIZE 1
 
 #define NET s  // s m l x

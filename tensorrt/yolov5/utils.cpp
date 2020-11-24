@@ -123,8 +123,15 @@ void create_gt_files(const std::string &filename) {
 //add prediction 
 void add_pred(const cv::Rect &pred_r,const int &cls){ 
 
-
-  std::vector<float> pred = {pred_r.x, pred_r.y,pred_r.width + pred_r.x, pred_r.height + pred_r.y,1.0,cls};
+  float x_mid = pred_r.x + (pred_r.width / 2.0); 
+  x_mid /= width; 
+  float y_mid = pred_r.y + (pred_r.height / 2.0);
+  y_mid /= height;
+  float box_h = pred_r.height /((float)height);
+  float box_w = pred_r.width /((float)width);
+     
+	  
+  std::vector<float> pred = {cls,x_mid,y_mid,box_w,box_h,0};
   preds.push_back(pred);  
 } 
 

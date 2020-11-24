@@ -10,7 +10,7 @@ const int SIZE = 640;
 namespace Yolo
 {
     static constexpr int CHECK_COUNT = 3;
-    static constexpr float IGNORE_THRESH = 0.1f;
+    static constexpr float IGNORE_THRESH = 0.001f;
     struct YoloKernel
     {
         int width;
