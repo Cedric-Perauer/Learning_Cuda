@@ -10,8 +10,8 @@
 
 int main(int argc, char** argv) {
 
-     YOLOV5 yolov5();
-
+     YOLO_INF yolov5 = YOLO_INF();
+     yolov5.imginfer("samples"); 
 
 /*      
      cudaSetDevice(DEVICE);

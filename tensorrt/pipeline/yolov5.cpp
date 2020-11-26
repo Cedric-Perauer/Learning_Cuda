@@ -6,12 +6,19 @@
 #include "common.hpp"
 #include <chrono>
 
+
+
 #define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.5
 #define CONF_THRESH 0.4
 #define BATCH_SIZE 1
 
+#define NET s  // s m l x
+#define NETSTRUCT(str) createEngine_##str
+#define CREATENET(net) NETSTRUCT(net)
+#define STR1(x) #x
+#define STR2(x) STR1(x)
 // stuff we know about the network and the input/output blobs
 static const int INPUT_H = Yolo::INPUT_H;
 static const int INPUT_W = Yolo::INPUT_W;
@@ -111,21 +118,32 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
 
 
 
-class YOLOV5
+class YOLO_INF
 {
-private:
-  std::string engine_name = "yolov5s.engine";
-  static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
-  static float prob[BATCH_SIZE * OUTPUT_SIZE];
+public:
+  
+  std::string engine_name ;
+  //static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
+  //static float prob[BATCH_SIZE * OUTPUT_SIZE];
   IRuntime* runtime;
   ICudaEngine* engine;
   char *trtModelStream{ nullptr };
   size_t size{ 0 };
+  IExecutionContext* context;
+  cudaStream_t stream;
+  void* buffers[2];
+  int inputIndex ;
+  int outputIndex ;
 
-public :
-  YOLOV5() {
-        // load engine weights 
-        std::ifstream file(engine_name, std::ios::binary);
+  YOLO_INF() {
+    	  // load engine weights 
+        cudaSetDevice(DEVICE);
+    // create a model using the API directly and serialize it to a stream
+    char *trtModelStream{ nullptr };
+    size_t size{ 0 };
+    engine_name = "yolov5s.engine";
+
+	  std::ifstream file(engine_name, std::ios::binary);
 
         if (file.good()) {
             file.seekg(0, file.end);
@@ -138,53 +156,42 @@ public :
              }
 
     // prepare input data ---------------------------
-    float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
-    float prob[BATCH_SIZE * OUTPUT_SIZE];
     runtime = createInferRuntime(gLogger);
     assert(runtime != nullptr);
     engine = runtime->deserializeCudaEngine(trtModelStream, size);
     assert(engine != nullptr);
-    IExecutionContext* context = engine->createExecutionContext();
+    context = engine->createExecutionContext();
     assert(context != nullptr);
     delete[] trtModelStream;
     assert(engine->getNbBindings() == 2);
-    void* buffers[2];
     // In order to bind the buffers, we need to know the names of the input and output tensors.
     // Note that indices are guaranteed to be less than IEngine::getNbBindings()
-    const int inputIndex = engine->getBindingIndex(INPUT_BLOB_NAME);
-    const int outputIndex = engine->getBindingIndex(OUTPUT_BLOB_NAME);
+    inputIndex = engine->getBindingIndex(INPUT_BLOB_NAME);
+    outputIndex = engine->getBindingIndex(OUTPUT_BLOB_NAME);
     assert(inputIndex == 0);
     assert(outputIndex == 1);
     // Create GPU buffers on device
     CHECK(cudaMalloc(&buffers[inputIndex], BATCH_SIZE * 3 * INPUT_H * INPUT_W * sizeof(float)));
     CHECK(cudaMalloc(&buffers[outputIndex], BATCH_SIZE * OUTPUT_SIZE * sizeof(float)));
     // Create stream
-    cudaStream_t stream;
     CHECK(cudaStreamCreate(&stream));
-
 
 
   }
 
-  ~YOLOV5(){}
-
-void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
-    // Create builder
-    IBuilder* builder = createInferBuilder(gLogger);
-    IBuilderConfig* config = builder->createBuilderConfig();
-
-    // Create model to populate the network, then set the outputs and create an engine
-    ICudaEngine* engine = createEngine_s(maxBatchSize, builder, config, DataType::kFLOAT);
-    //ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT);
-    assert(engine != nullptr);
-
-    // Serialize the engine
-    (*modelStream) = engine->serialize();
-
-    // Close everything down
+  ~YOLO_INF(){
+ // Release stream and buffers 
+    cudaStreamDestroy(stream); 
+    CHECK(cudaFree(buffers[inputIndex])); 
+    CHECK(cudaFree(buffers[outputIndex])); 
+    // Destroy the engine 
+    context->destroy(); 
     engine->destroy();
-    builder->destroy();
-}
+    runtime->destroy();
+  
+
+
+  }
 
 void doInference(IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
     // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
@@ -194,11 +201,71 @@ void doInference(IExecutionContext& context, cudaStream_t& stream, void **buffer
     cudaStreamSynchronize(stream);
 }
 
-
-void yoloPipeline()
+void imginfer(const std::string&dir)
 {
+std::vector<std::string> names; 
+
+auto a = read_files_in_dir(dir.c_str(),names);
+
+if(a==-1)
+{
+	std::cout << "No files in " << dir.c_str() << std::endl;
+        return;
+}
+for(auto name:names)
+{
+    all(name);
+}
 }
 
+int all(const std::string &img_name)
+{
+    std::cout << "start" << std::endl;
+      // prepare input data ---------------------------
+    static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
+    //for (int i = 0; i < 3 * INPUT_H * INPUT_W; i++)
+    //    data[i] = 1.0;
+    static float prob[BATCH_SIZE * OUTPUT_SIZE];
+              
+    
+        // Run inference
+    cv::Mat img = cv::imread(img_name);
+            if (img.empty()) 
+	    {    std::cout << "img is empty " << std::endl;
+		    return 0;}
+            
+        auto start = std::chrono::system_clock::now();
+	    cv::Mat pr_img = preprocess_img(img); // letterbox BGR to RGB
+            int i = 0;
+            for (int row = 0; row < INPUT_H; ++row) {
+                uchar* uc_pixel = pr_img.data + row * pr_img.step;
+                for (int col = 0; col < INPUT_W; ++col) {
+                    data[ i] = (float)uc_pixel[2] / 255.0;
+                    data[ i + INPUT_H * INPUT_W] = (float)uc_pixel[1] / 255.0;
+                    data[ i + 2 * INPUT_H * INPUT_W] = (float)uc_pixel[0] / 255.0;
+                    uc_pixel += 3;
+                    ++i;
+                }
+            }
+
+        doInference(*context, stream, buffers, data, prob, BATCH_SIZE);
+        std::vector<std::vector<Yolo::Detection>> batch_res(1);
+        
+    	auto& res = batch_res[0];
+            nms(res, &prob[0], CONF_THRESH, NMS_THRESH);
+            
+        auto end = std::chrono::system_clock::now();
+        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+            //std::cout << res.size() << std::endl;
+            cv::Mat img2 = cv::imread(img_name);
+            for (size_t j = 0; j < res.size(); j++) {
+                cv::Rect r = get_rect(img, res[j].bbox);
+		cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
+                cv::putText(img2, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+            }
+            cv::imwrite("/home/cedric/Learning_Cuda/tensorrt/pipeline/img.jpg", img2);
+
+}
 
 };
 
