@@ -1,0 +1,5 @@
+build/
+labels/
+*.swp 
+*txt
+*.jpg
