@@ -1,13 +1,21 @@
 set nocompatible              " be iMproved, required
-filetype off                  " required
-set completeopt+=noinsert 
+filetype off                  " required 
+set completeopt+=noinsert
 
 let g:airline_theme='simple'
 let g:rainbow_active = 1
 " set the runtime path to include Vundle and initialize
 map <silent> <C-a> :NERDTreeToggle<CR>
-map <silent> <C-n>  :RainbowLevelsToggle<CR>
+map <silent> <C-n>  :RainbowLevelsToggle<CR> 
 
+"remap shortcuts
+nnoremap <C-v> <C-w><C-i>
+nnoremap <C-h> <C-w><C-v>
+"save files 
+inoremap <C-f> <esc>:w<!>       
+nnoremap <c-f> :w<!>
+
+"indent rainbow things 
 hi! RainbowLevel0 ctermbg=240 guibg=#585858
 hi! RainbowLevel1 ctermbg=239 guibg=#4e4e4e
 hi! RainbowLevel2 ctermbg=238 guibg=#444444
@@ -17,6 +25,8 @@ hi! RainbowLevel5 ctermbg=235 guibg=#262626
 hi! RainbowLevel6 ctermbg=234 guibg=#1c1c1c
 hi! RainbowLevel7 ctermbg=233 guibg=#121212
 hi! RainbowLevel8 ctermbg=232 guibg=#080808
+
+
 autocmd vimenter * NERDTree
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
