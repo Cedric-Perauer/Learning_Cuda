@@ -24,5 +24,5 @@ def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
             return engine
 
 engine = build_engine("new_keypoints.onnx")
-with open('keypoint_engine.trt', 'wb') as f:
+with open('rektnet.engine', 'wb') as f:
     f.write(bytearray(engine.serialize()))
