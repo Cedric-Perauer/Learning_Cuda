@@ -203,22 +203,25 @@ void doInference(IExecutionContext& context, cudaStream_t& stream, void **buffer
 
 void imginfer(const std::string&dir)
 {
-std::vector<std::string> names; 
+std::vector<std::string> names = {"samples/img1.jpg","samples/img2.jpg","samples/img3.jpg","samples/img4.jpg","samples/img5.jpg","samples/img6.jpg","samples/img7.jpg"};
 
-auto a = read_files_in_dir(dir.c_str(),names);
-
+//auto a = read_files_in_dir(dir.c_str(),names);
+/*
 if(a==-1)
 {
 	std::cout << "No files in " << dir.c_str() << std::endl;
         return;
 }
+*/
+int i = 0; 
 for(auto name:names)
 {
-    all(name);
+    all(name,i);
+i++;
 }
 }
 
-int all(const std::string &img_name)
+int all(const std::string &img_name, const int &num)
 {
     std::cout << "start" << std::endl;
       // prepare input data ---------------------------
@@ -229,7 +232,7 @@ int all(const std::string &img_name)
               
     
         // Run inference
-    cv::Mat img = cv::imread(img_name);
+    cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
 		    return 0;}
@@ -257,13 +260,13 @@ int all(const std::string &img_name)
         auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
             //std::cout << res.size() << std::endl;
-            cv::Mat img2 = cv::imread(img_name);
+            cv::Mat img2 = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
 		cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
                 cv::putText(img2, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
-            cv::imwrite("/home/cedric/Learning_Cuda/tensorrt/pipeline/img.jpg", img2);
+            cv::imwrite("/home/cedric/Learning_Cuda/tensorrt/pipeline/output/img" + std::to_string(num) + ".jpg", img2);
 
 }
 

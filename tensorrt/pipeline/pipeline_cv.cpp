@@ -3,7 +3,6 @@
 #include "cuda_runtime_api.h"
 #include "logging.h"
 #include "common.hpp"
-
 #include "yolov5.cpp"
 
 
@@ -11,7 +10,7 @@
 int main(int argc, char** argv) {
 
      YOLO_INF yolov5 = YOLO_INF();
-     yolov5.imginfer("samples"); 
+     yolov5.imginfer("../samples/"); 
 
 /*      
      cudaSetDevice(DEVICE);

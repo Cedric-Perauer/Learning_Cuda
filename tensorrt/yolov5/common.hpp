@@ -276,7 +276,7 @@ ILayer* SPP(INetworkDefinition *network, std::map<std::string, Weights>& weightM
 }
 
 int read_files_in_dir(const char *p_dir_name, std::vector<std::string> &file_names) {
-    DIR *p_dir = opendir(p_dir_name);
+    DIR *p_dir = opendir("../samples/");
     if (p_dir == nullptr) {
         return -1;
     }
