@@ -8,8 +8,6 @@
 #define SIZE 80 //rektnet input size 
 #define DEVICE 0 
 static Logger dLogger;
-const char* INPUT_BLOB = "data";
-const char* OUTPUT_BLOB = "prob";
 
 class Rektnet {
         private : 
@@ -50,8 +48,8 @@ class Rektnet {
         delete[] trtModelStream;
         assert(engine->getNbBindings() == 2);
         
-	inputIndex = engine->getBindingIndex(INPUT_BLOB_NAME);
-        outputIndex = engine->getBindingIndex(OUTPUT_BLOB_NAME);
+	inputIndex = engine->getBindingIndex("data");
+        outputIndex = engine->getBindingIndex("prob");
     assert(inputIndex == 0);
     assert(outputIndex == 1);
     // Create GPU buffers on deviceF
