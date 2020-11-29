@@ -14,8 +14,8 @@ int main(int argc, char** argv) {
      YOLO_INF yolov5 = YOLO_INF();
      Rektnet rektnet = Rektnet(1);
      
-     yolov5.imginfer("../samples/"); 
-     
+     //yolov5.imginfer("../samples/"); 
+     rektnet.imginfer("../samples/");  
 
      return 0;
 }
