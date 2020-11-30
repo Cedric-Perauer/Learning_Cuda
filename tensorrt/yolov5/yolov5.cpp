@@ -4,6 +4,8 @@
 #include "logging.h"
 #include "common.hpp"
 #include "utils.cpp"
+#include <torch/torch.h> 
+
 
 #define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
@@ -27,15 +29,16 @@ const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
 
 // Creat the engine using only the API and not any parser.
-ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
-    INetworkDefinition* network = builder->createNetworkV2(0U);
+
+nvinfer1::ICudaEngine* createEngine_s(unsigned int maxBatchSize, nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, nvinfer1::DataType dt) {
+    nvinfer1::INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
-    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
+    nvinfer1::ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, nvinfer1::Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../best_small.wts");
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+    std::map<std::string, nvinfer1::Weights> weightMap = loadWeights("../best_small.wts");
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
 
     // yolov5 backbone
     auto focus0 = focus(network, weightMap, *data, 3, 32, 3, "model.0");
@@ -56,38 +59,38 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     for (int i = 0; i < 256 * 2 * 2; i++) {
         deval[i] = 1.0;
     }
-    Weights deconvwts11{ DataType::kFLOAT, deval, 256 * 2 * 2 };
-    IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 256, DimsHW{ 2, 2 }, deconvwts11, emptywts);
-    deconv11->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts11{ nvinfer1::DataType::kFLOAT, deval, 256 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 256, nvinfer1::DimsHW{ 2, 2 }, deconvwts11, emptywts);
+    deconv11->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv11->setNbGroups(256);
     weightMap["deconv11"] = deconvwts11;
 
-    ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
+    nvinfer1::ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
     auto cat12 = network->addConcatenation(inputTensors12, 2);
     auto bottleneck_csp13 = bottleneckCSP(network, weightMap, *cat12->getOutput(0), 512, 256, 1, false, 1, 0.5, "model.13");
     auto conv14 = convBlock(network, weightMap, *bottleneck_csp13->getOutput(0), 128, 1, 1, 1, "model.14");
 
-    Weights deconvwts15{ DataType::kFLOAT, deval, 128 * 2 * 2 };
-    IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 128, DimsHW{ 2, 2 }, deconvwts15, emptywts);
-    deconv15->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts15{ nvinfer1::DataType::kFLOAT, deval, 128 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 128, nvinfer1::DimsHW{ 2, 2 }, deconvwts15, emptywts);
+    deconv15->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv15->setNbGroups(128);
 
-    ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
+    nvinfer1::ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
     auto cat16 = network->addConcatenation(inputTensors16, 2);
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 256, 128, 1, false, 1, 0.5, "model.17");
-    IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    nvinfer1::IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
 
     auto conv18 = convBlock(network, weightMap, *bottleneck_csp17->getOutput(0), 128, 3, 2, 1, "model.18");
-    ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
+    nvinfer1::ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
     auto cat19 = network->addConcatenation(inputTensors19, 2);
     auto bottleneck_csp20 = bottleneckCSP(network, weightMap, *cat19->getOutput(0), 256, 256, 1, false, 1, 0.5, "model.20");
-    IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    nvinfer1::IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
 
     auto conv21 = convBlock(network, weightMap, *bottleneck_csp20->getOutput(0), 256, 3, 2, 1, "model.21");
-    ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
+    nvinfer1::ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
     auto cat22 = network->addConcatenation(inputTensors22, 2);
     auto bottleneck_csp23 = bottleneckCSP(network, weightMap, *cat22->getOutput(0), 512, 512, 1, false, 1, 0.5, "model.23");
-    IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    nvinfer1::IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
     auto yolo = addYoLoLayer(network, weightMap, det0, det1, det2);
     yolo->getOutput(0)->setName(OUTPUT_BLOB_NAME);
@@ -100,7 +103,7 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     config->setFlag(BuilderFlag::kFP16);
 #endif
     std::cout << "Building engine, please wait for a while..." << std::endl;
-    ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
+    nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
 
     // Don't need the network any more
@@ -115,15 +118,15 @@ ICudaEngine* createEngine_s(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
-    INetworkDefinition* network = builder->createNetworkV2(0U);
+nvinfer1::ICudaEngine* createEngine_m(unsigned int maxBatchSize, nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, nvinfer1::DataType dt) {
+    nvinfer1::INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
-    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
+    nvinfer1::ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, nvinfer1::Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5m.wts");
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+    std::map<std::string, nvinfer1::Weights> weightMap = loadWeights("../yolov5m.wts");
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
     auto focus0 = focus(network, weightMap, *data, 3, 48, 3, "model.0");
@@ -143,42 +146,42 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     for (int i = 0; i < 384 * 2 * 2; i++) {
         deval[i] = 1.0;
     }
-    Weights deconvwts11{ DataType::kFLOAT, deval, 384 * 2 * 2 };
-    IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 384, DimsHW{ 2, 2 }, deconvwts11, emptywts);
-    deconv11->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts11{ nvinfer1::DataType::kFLOAT, deval, 384 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 384, nvinfer1::DimsHW{ 2, 2 }, deconvwts11, emptywts);
+    deconv11->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv11->setNbGroups(384);
     weightMap["deconv11"] = deconvwts11;
-    ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
+    nvinfer1::ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
     auto cat12 = network->addConcatenation(inputTensors12, 2);
 
     auto bottleneck_csp13 = bottleneckCSP(network, weightMap, *cat12->getOutput(0), 768, 384, 2, false, 1, 0.5, "model.13");
 
     auto conv14 = convBlock(network, weightMap, *bottleneck_csp13->getOutput(0), 192, 1, 1, 1, "model.14");
 
-    Weights deconvwts15{ DataType::kFLOAT, deval, 192 * 2 * 2 };
-    IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 192, DimsHW{ 2, 2 }, deconvwts15, emptywts);
-    deconv15->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts15{ nvinfer1::DataType::kFLOAT, deval, 192 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 192, nvinfer1::DimsHW{ 2, 2 }, deconvwts15, emptywts);
+    deconv15->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv15->setNbGroups(192);
 
-    ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
+    nvinfer1::ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
     auto cat16 = network->addConcatenation(inputTensors16, 2);
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 384, 192, 2, false, 1, 0.5, "model.17");
 
     //yolo layer 0
-    IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    nvinfer1::IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
     auto conv18 = convBlock(network, weightMap, *bottleneck_csp17->getOutput(0), 192, 3, 2, 1, "model.18");
-    ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
+    nvinfer1::ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
     auto cat19 = network->addConcatenation(inputTensors19, 2);
     auto bottleneck_csp20 = bottleneckCSP(network, weightMap, *cat19->getOutput(0), 384, 384, 2, false, 1, 0.5, "model.20");
 
     //yolo layer 1
-    IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    nvinfer1::IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
     auto conv21 = convBlock(network, weightMap, *bottleneck_csp20->getOutput(0), 384, 3, 2, 1, "model.21");
-    ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
+    nvinfer1::ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
     auto cat22 = network->addConcatenation(inputTensors22, 2);
     auto bottleneck_csp23 = bottleneckCSP(network, weightMap, *cat22->getOutput(0), 768, 768, 2, false, 1, 0.5, "model.23");
     // yolo layer 2
-    IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    nvinfer1::IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
     auto yolo = addYoLoLayer(network, weightMap, det0, det1, det2);
     yolo->getOutput(0)->setName(OUTPUT_BLOB_NAME);
@@ -191,7 +194,7 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     config->setFlag(BuilderFlag::kFP16);
 #endif
     std::cout << "Building engine, please wait for a while..." << std::endl;
-    ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
+    nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
 
     // Don't need the network any more
@@ -206,15 +209,15 @@ ICudaEngine* createEngine_m(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
-    INetworkDefinition* network = builder->createNetworkV2(0U);
+nvinfer1::ICudaEngine* createEngine_l(unsigned int maxBatchSize, nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, nvinfer1::DataType dt) {
+    nvinfer1::INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
-    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
+    nvinfer1::ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, nvinfer1::Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5l.wts");
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+    std::map<std::string, nvinfer1::Weights> weightMap = loadWeights("../yolov5l.wts");
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
     auto focus0 = focus(network, weightMap, *data, 3, 64, 3, "model.0");
@@ -235,39 +238,39 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     for (int i = 0; i < 512 * 2 * 2; i++) {
         deval[i] = 1.0;
     }
-    Weights deconvwts11{ DataType::kFLOAT, deval, 512 * 2 * 2 };
-    IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 512, DimsHW{ 2, 2 }, deconvwts11, emptywts);
-    deconv11->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts11{ nvinfer1::DataType::kFLOAT, deval, 512 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 512, nvinfer1::DimsHW{ 2, 2 }, deconvwts11, emptywts);
+    deconv11->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv11->setNbGroups(512);
     weightMap["deconv11"] = deconvwts11;
 
-    ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
+    nvinfer1::ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
     auto cat12 = network->addConcatenation(inputTensors12, 2);
     auto bottleneck_csp13 = bottleneckCSP(network, weightMap, *cat12->getOutput(0), 1024, 512, 3, false, 1, 0.5, "model.13");
     auto conv14 = convBlock(network, weightMap, *bottleneck_csp13->getOutput(0), 256, 1, 1, 1, "model.14");
 
-    Weights deconvwts15{ DataType::kFLOAT, deval, 256 * 2 * 2 };
-    IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 256, DimsHW{ 2, 2 }, deconvwts15, emptywts);
-    deconv15->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts15{ nvinfer1::DataType::kFLOAT, deval, 256 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 256, nvinfer1::DimsHW{ 2, 2 }, deconvwts15, emptywts);
+    deconv15->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv15->setNbGroups(256);
-    ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
+    nvinfer1::ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
     auto cat16 = network->addConcatenation(inputTensors16, 2);
 
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 512, 256, 3, false, 1, 0.5, "model.17");
 
     // yolo layer 0
-    IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    nvinfer1::IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
     auto conv18 = convBlock(network, weightMap, *bottleneck_csp17->getOutput(0), 256, 3, 2, 1, "model.18");
-    ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
+    nvinfer1::ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
     auto cat19 = network->addConcatenation(inputTensors19, 2);
     auto bottleneck_csp20 = bottleneckCSP(network, weightMap, *cat19->getOutput(0), 512, 512, 3, false, 1, 0.5, "model.20");
     //yolo layer 1
-    IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    nvinfer1::IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
     auto conv21 = convBlock(network, weightMap, *bottleneck_csp20->getOutput(0), 512, 3, 2, 1, "model.21");
-    ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
+    nvinfer1::ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
     auto cat22 = network->addConcatenation(inputTensors22, 2);
     auto bottleneck_csp23 = bottleneckCSP(network, weightMap, *cat22->getOutput(0), 1024, 1024, 3, false, 1, 0.5, "model.23");
-    IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    nvinfer1::IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
     auto yolo = addYoLoLayer(network, weightMap, det0, det1, det2);
     yolo->getOutput(0)->setName(OUTPUT_BLOB_NAME);
@@ -280,7 +283,7 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     config->setFlag(BuilderFlag::kFP16);
 #endif
     std::cout << "Building engine, please wait for a while..." << std::endl;
-    ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
+    nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
 
     // Don't need the network any more
@@ -295,15 +298,15 @@ ICudaEngine* createEngine_l(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt) {
-    INetworkDefinition* network = builder->createNetworkV2(0U);
+nvinfer1::ICudaEngine* createEngine_x(unsigned int maxBatchSize, nvinfer1::IBuilder* builder, nvinfer1::IBuilderConfig* config, nvinfer1::DataType dt) {
+    nvinfer1::INetworkDefinition* network = builder->createNetworkV2(0U);
 
     // Create input tensor of shape {3, INPUT_H, INPUT_W} with name INPUT_BLOB_NAME
-    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{ 3, INPUT_H, INPUT_W });
+    nvinfer1::ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, nvinfer1::Dims3{ 3, INPUT_H, INPUT_W });
     assert(data);
 
-    std::map<std::string, Weights> weightMap = loadWeights("../yolov5x.wts");
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+    std::map<std::string, nvinfer1::Weights> weightMap = loadWeights("../yolov5x.wts");
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
 
     /* ------ yolov5 backbone------ */
     auto focus0 = focus(network, weightMap, *data, 3, 80, 3, "model.0");
@@ -324,41 +327,41 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     for (int i = 0; i < 640 * 2 * 2; i++) {
         deval[i] = 1.0;
     }
-    Weights deconvwts11{ DataType::kFLOAT, deval, 640 * 2 * 2 };
-    IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 640, DimsHW{ 2, 2 }, deconvwts11, emptywts);
-    deconv11->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts11{ nvinfer1::DataType::kFLOAT, deval, 640 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv11 = network->addDeconvolutionNd(*conv10->getOutput(0), 640, nvinfer1::DimsHW{ 2, 2 }, deconvwts11, emptywts);
+    deconv11->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv11->setNbGroups(640);
     weightMap["deconv11"] = deconvwts11;
 
-    ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
+    nvinfer1::ITensor* inputTensors12[] = { deconv11->getOutput(0), bottleneck_csp6->getOutput(0) };
     auto cat12 = network->addConcatenation(inputTensors12, 2);
 
     auto bottleneck_csp13 = bottleneckCSP(network, weightMap, *cat12->getOutput(0), 1280, 640, 4, false, 1, 0.5, "model.13");
     auto conv14 = convBlock(network, weightMap, *bottleneck_csp13->getOutput(0), 320, 1, 1, 1, "model.14");
 
-    Weights deconvwts15{ DataType::kFLOAT, deval, 320 * 2 * 2 };
-    IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 320, DimsHW{ 2, 2 }, deconvwts15, emptywts);
-    deconv15->setStrideNd(DimsHW{ 2, 2 });
+    nvinfer1::Weights deconvwts15{ nvinfer1::DataType::kFLOAT, deval, 320 * 2 * 2 };
+    nvinfer1::IDeconvolutionLayer* deconv15 = network->addDeconvolutionNd(*conv14->getOutput(0), 320, nvinfer1::DimsHW{ 2, 2 }, deconvwts15, emptywts);
+    deconv15->setStrideNd(nvinfer1::DimsHW{ 2, 2 });
     deconv15->setNbGroups(320);
-    ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
+    nvinfer1::ITensor* inputTensors16[] = { deconv15->getOutput(0), bottleneck_csp4->getOutput(0) };
     auto cat16 = network->addConcatenation(inputTensors16, 2);
 
     auto bottleneck_csp17 = bottleneckCSP(network, weightMap, *cat16->getOutput(0), 640, 320, 4, false, 1, 0.5, "model.17");
 
     // yolo layer 0
-    IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
+    nvinfer1::IConvolutionLayer* det0 = network->addConvolutionNd(*bottleneck_csp17->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.0.weight"], weightMap["model.24.m.0.bias"]);
     auto conv18 = convBlock(network, weightMap, *bottleneck_csp17->getOutput(0), 320, 3, 2, 1, "model.18");
-    ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
+    nvinfer1::ITensor* inputTensors19[] = { conv18->getOutput(0), conv14->getOutput(0) };
     auto cat19 = network->addConcatenation(inputTensors19, 2);
     auto bottleneck_csp20 = bottleneckCSP(network, weightMap, *cat19->getOutput(0), 640, 640, 4, false, 1, 0.5, "model.20");
     // yolo layer 1
-    IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
+    nvinfer1::IConvolutionLayer* det1 = network->addConvolutionNd(*bottleneck_csp20->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.1.weight"], weightMap["model.24.m.1.bias"]);
     auto conv21 = convBlock(network, weightMap, *bottleneck_csp20->getOutput(0), 640, 3, 2, 1, "model.21");
-    ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
+    nvinfer1::ITensor* inputTensors22[] = { conv21->getOutput(0), conv10->getOutput(0) };
     auto cat22 = network->addConcatenation(inputTensors22, 2);
     auto bottleneck_csp23 = bottleneckCSP(network, weightMap, *cat22->getOutput(0), 1280, 1280, 4, false, 1, 0.5, "model.23");
     // yolo layer 2
-    IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
+    nvinfer1::IConvolutionLayer* det2 = network->addConvolutionNd(*bottleneck_csp23->getOutput(0), 3 * (Yolo::CLASS_NUM + 5), nvinfer1::DimsHW{ 1, 1 }, weightMap["model.24.m.2.weight"], weightMap["model.24.m.2.bias"]);
 
     auto yolo = addYoLoLayer(network, weightMap, det0, det1, det2);
     yolo->getOutput(0)->setName(OUTPUT_BLOB_NAME);
@@ -371,7 +374,7 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     config->setFlag(BuilderFlag::kFP16);
 #endif
     std::cout << "Building engine, please wait for a while..." << std::endl;
-    ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
+    nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "Build engine successfully!" << std::endl;
 
     // Don't need the network any more
@@ -386,14 +389,14 @@ ICudaEngine* createEngine_x(unsigned int maxBatchSize, IBuilder* builder, IBuild
     return engine;
 }
 
-void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
+void APIToModel(unsigned int maxBatchSize, nvinfer1::IHostMemory** modelStream) {
     // Create builder
-    IBuilder* builder = createInferBuilder(gLogger);
-    IBuilderConfig* config = builder->createBuilderConfig();
+    nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(gLogger);
+    nvinfer1::IBuilderConfig* config = builder->createBuilderConfig();
 
     // Create model to populate the network, then set the outputs and create an engine
-    ICudaEngine* engine = (CREATENET(NET))(maxBatchSize, builder, config, DataType::kFLOAT);
-    //ICudaEngine* engine = createEngine(maxBatchSize, builder, config, DataType::kFLOAT);
+    nvinfer1::ICudaEngine* engine = (CREATENET(NET))(maxBatchSize, builder, config, nvinfer1::DataType::kFLOAT);
+    //nvinfer1::ICudaEngine* engine = createEngine(maxBatchSize, builder, config, nvinfer1::DataType::kFLOAT);
     assert(engine != nullptr);
 
     // Serialize the engine
@@ -404,7 +407,7 @@ void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream) {
     builder->destroy();
 }
 
-void doInference(IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
+void doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
     // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
     CHECK(cudaMemcpyAsync(buffers[0], input, batchSize * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream));
     context.enqueue(batchSize, buffers, stream, nullptr);
@@ -421,7 +424,7 @@ int main(int argc, char** argv) {
     std::string engine_name = STR2(NET);
     engine_name = "yolov5" + engine_name + ".engine";
     if (argc == 2 && std::string(argv[1]) == "-s") {
-        IHostMemory* modelStream{ nullptr };
+        nvinfer1::IHostMemory* modelStream{ nullptr };
         APIToModel(BATCH_SIZE, &modelStream);
         assert(modelStream != nullptr);
         std::ofstream p(engine_name, std::ios::binary);
@@ -461,11 +464,11 @@ int main(int argc, char** argv) {
     //for (int i = 0; i < 3 * INPUT_H * INPUT_W; i++)
     //    data[i] = 1.0;
     static float prob[BATCH_SIZE * OUTPUT_SIZE];
-    IRuntime* runtime = createInferRuntime(gLogger);
+    nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(gLogger);
     assert(runtime != nullptr);
-    ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
+    nvinfer1::ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
     assert(engine != nullptr);
-    IExecutionContext* context = engine->createExecutionContext();
+    nvinfer1::IExecutionContext* context = engine->createExecutionContext();
     assert(context != nullptr);
     delete[] trtModelStream;
     assert(engine->getNbBindings() == 2);

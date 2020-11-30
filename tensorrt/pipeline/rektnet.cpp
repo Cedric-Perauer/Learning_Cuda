@@ -6,18 +6,19 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp> 
 #include <opencv2/core/types.hpp>
+#include <torch/torch.h>
 
-#define DEVICE 0 
+#define REKT_DEVICE 0 
 static Logger dLogger;
 const int REKT_SIZE = 80; 
 
 class Rektnet {
         private : 
-	 IRuntime* runtime; 
-	 ICudaEngine* engine; 
+	 nvinfer1::IRuntime* runtime; 
+	 nvinfer1::ICudaEngine* engine; 
 	 char*trtModelStream{ nullptr };
 	 size_t size{ 0 };
-	 IExecutionContext* context;
+	 nvinfer1::IExecutionContext* context;
 	 cudaStream_t stream;
          std::string engine_name;
          int batchSize; 
@@ -28,7 +29,7 @@ class Rektnet {
 	public : 
 
 	Rektnet(const int &batchSize){
-	cudaSetDevice(DEVICE);
+	cudaSetDevice(REKT_DEVICE);
         engine_name = "rektnet.engine"; 
         std::ifstream file(engine_name,std::ios::binary);
         
@@ -41,7 +42,7 @@ class Rektnet {
             file.read(trtModelStream, size);
             file.close();
              }	
-        runtime = createInferRuntime(dLogger);
+        runtime = nvinfer1::createInferRuntime(dLogger);
         assert(runtime != nullptr);
         engine = runtime->deserializeCudaEngine(trtModelStream, size);
         assert(engine != nullptr);
@@ -88,8 +89,9 @@ class Rektnet {
            return dst;                      
 	}
         
+                
 
-	void doInference(IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
+	void doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
 	    // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
 	    CHECK(cudaMemcpyAsync(buffers[0], input, batchSize * 3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
 	    context.enqueue(batchSize, buffers, stream, nullptr);
@@ -117,6 +119,14 @@ class Rektnet {
 	}
 	}        
 
+        void soft_argmax(){ 
+    
+        	
+        
+
+
+	} 
+
 
         void inference(const std::string &filename) 
 	{
@@ -143,7 +153,6 @@ class Rektnet {
 	 doInference(*context, stream, buffers, data, pts, BATCH_SIZE);
          auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-
 	  } 
 
 

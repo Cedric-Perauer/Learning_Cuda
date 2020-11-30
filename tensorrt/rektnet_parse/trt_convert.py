@@ -7,6 +7,7 @@ def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
     TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
     builder = trt.Builder(TRT_LOGGER)
     builder.fp16_mode = fp16
+    builder.max_batch_size = 30 
     config = builder.create_builder_config()
     config.max_workspace_size = max_ws
     if fp16:
@@ -23,6 +24,6 @@ def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
             engine = builder.build_engine(network, config=config)
             return engine
 
-engine = build_engine("new_keypoints.onnx")
+engine = build_engine("new_keypoints.onnx",True)
 with open('rektnet.engine', 'wb') as f:
     f.write(bytearray(engine.serialize()))

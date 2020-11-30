@@ -21,7 +21,6 @@
         }\
     } while (0)
 
-using namespace nvinfer1;
 
 cv::Mat preprocess_img(cv::Mat& img) {
     int w, h, x, y;
@@ -119,9 +118,9 @@ void nms(std::vector<Yolo::Detection>& res, float *output, float conf_thresh, fl
 
 // TensorRT weight files have a simple space delimited format:
 // [type] [size] <data x size in hex>
-std::map<std::string, Weights> loadWeights(const std::string file) {
+std::map<std::string,nvinfer1::Weights> loadWeights(const std::string file) {
     std::cout << "Loading weights: " << file << std::endl;
-    std::map<std::string, Weights> weightMap;
+    std::map<std::string,nvinfer1::Weights> weightMap;
 
     // Open weights file
     std::ifstream input(file);
@@ -134,13 +133,13 @@ std::map<std::string, Weights> loadWeights(const std::string file) {
 
     while (count--)
     {
-        Weights wt{ DataType::kFLOAT, nullptr, 0 };
+        nvinfer1::Weights wt{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
         uint32_t size;
 
         // Read name and type of blob
         std::string name;
         input >> name >> std::dec >> size;
-        wt.type = DataType::kFLOAT;
+        wt.type = nvinfer1::DataType::kFLOAT;
 
         // Load blob
         uint32_t* val = reinterpret_cast<uint32_t*>(malloc(sizeof(val) * size));
@@ -157,7 +156,7 @@ std::map<std::string, Weights> loadWeights(const std::string file) {
     return weightMap;
 }
 
-IScaleLayer* addBatchNorm2d(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, std::string lname, float eps) {
+nvinfer1::IScaleLayer* addBatchNorm2d(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, std::string lname, float eps) {
     float *gamma = (float*)weightMap[lname + ".weight"].values;
     float *beta = (float*)weightMap[lname + ".bias"].values;
     float *mean = (float*)weightMap[lname + ".running_mean"].values;
@@ -168,107 +167,107 @@ IScaleLayer* addBatchNorm2d(INetworkDefinition *network, std::map<std::string, W
     for (int i = 0; i < len; i++) {
         scval[i] = gamma[i] / sqrt(var[i] + eps);
     }
-    Weights scale{ DataType::kFLOAT, scval, len };
+    nvinfer1::Weights scale{ nvinfer1::DataType::kFLOAT, scval, len };
 
     float *shval = reinterpret_cast<float*>(malloc(sizeof(float) * len));
     for (int i = 0; i < len; i++) {
         shval[i] = beta[i] - mean[i] * gamma[i] / sqrt(var[i] + eps);
     }
-    Weights shift{ DataType::kFLOAT, shval, len };
+    nvinfer1::Weights shift{ nvinfer1::DataType::kFLOAT, shval, len };
 
     float *pval = reinterpret_cast<float*>(malloc(sizeof(float) * len));
     for (int i = 0; i < len; i++) {
         pval[i] = 1.0;
     }
-    Weights power{ DataType::kFLOAT, pval, len };
+    nvinfer1::Weights power{ nvinfer1::DataType::kFLOAT, pval, len };
 
     weightMap[lname + ".scale"] = scale;
     weightMap[lname + ".shift"] = shift;
     weightMap[lname + ".power"] = power;
-    IScaleLayer* scale_1 = network->addScale(input, ScaleMode::kCHANNEL, shift, scale, power);
+    nvinfer1::IScaleLayer* scale_1 = network->addScale(input, nvinfer1::ScaleMode::kCHANNEL, shift, scale, power);
     assert(scale_1);
     return scale_1;
 }
 
-ILayer* convBlock(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int outch, int ksize, int s, int g, std::string lname) {
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+nvinfer1::ILayer* convBlock(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, int outch, int ksize, int s, int g, std::string lname) {
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
     int p = ksize / 2;
-    IConvolutionLayer* conv1 = network->addConvolutionNd(input, outch, DimsHW{ ksize, ksize }, weightMap[lname + ".conv.weight"], emptywts);
+    nvinfer1::IConvolutionLayer* conv1 = network->addConvolutionNd(input, outch, nvinfer1::DimsHW{ ksize, ksize }, weightMap[lname + ".conv.weight"], emptywts);
     assert(conv1);
-    conv1->setStrideNd(DimsHW{ s, s });
-    conv1->setPaddingNd(DimsHW{ p, p });
+    conv1->setStrideNd(nvinfer1::DimsHW{ s, s });
+    conv1->setPaddingNd(nvinfer1::DimsHW{ p, p });
     conv1->setNbGroups(g);
-    IScaleLayer* bn1 = addBatchNorm2d(network, weightMap, *conv1->getOutput(0), lname + ".bn", 1e-3);
+    nvinfer1::IScaleLayer* bn1 = addBatchNorm2d(network, weightMap, *conv1->getOutput(0), lname + ".bn", 1e-3);
 
     // hard_swish = x * hard_sigmoid
-    auto hsig = network->addActivation(*bn1->getOutput(0), ActivationType::kHARD_SIGMOID);
+    auto hsig = network->addActivation(*bn1->getOutput(0), nvinfer1::ActivationType::kHARD_SIGMOID);
     assert(hsig);
     hsig->setAlpha(1.0 / 6.0);
     hsig->setBeta(0.5);
-    auto ew = network->addElementWise(*bn1->getOutput(0), *hsig->getOutput(0), ElementWiseOperation::kPROD);
+    auto ew = network->addElementWise(*bn1->getOutput(0), *hsig->getOutput(0), nvinfer1::ElementWiseOperation::kPROD);
     assert(ew);
     return ew;
 }
 
-ILayer* focus(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int inch, int outch, int ksize, std::string lname) {
-    ISliceLayer *s1 = network->addSlice(input, Dims3{ 0, 0, 0 }, Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, Dims3{ 1, 2, 2 });
-    ISliceLayer *s2 = network->addSlice(input, Dims3{ 0, 1, 0 }, Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, Dims3{ 1, 2, 2 });
-    ISliceLayer *s3 = network->addSlice(input, Dims3{ 0, 0, 1 }, Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, Dims3{ 1, 2, 2 });
-    ISliceLayer *s4 = network->addSlice(input, Dims3{ 0, 1, 1 }, Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, Dims3{ 1, 2, 2 });
-    ITensor* inputTensors[] = { s1->getOutput(0), s2->getOutput(0), s3->getOutput(0), s4->getOutput(0) };
+nvinfer1::ILayer* focus(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, int inch, int outch, int ksize, std::string lname) {
+    nvinfer1::ISliceLayer *s1 = network->addSlice(input, nvinfer1::Dims3{ 0, 0, 0 }, nvinfer1::Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, nvinfer1::Dims3{ 1, 2, 2 });
+    nvinfer1::ISliceLayer *s2 = network->addSlice(input, nvinfer1::Dims3{ 0, 1, 0 }, nvinfer1::Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, nvinfer1::Dims3{ 1, 2, 2 });
+    nvinfer1::ISliceLayer *s3 = network->addSlice(input, nvinfer1::Dims3{ 0, 0, 1 }, nvinfer1::Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, nvinfer1::Dims3{ 1, 2, 2 });
+    nvinfer1::ISliceLayer *s4 = network->addSlice(input, nvinfer1::Dims3{ 0, 1, 1 }, nvinfer1::Dims3{ inch, Yolo::INPUT_H / 2, Yolo::INPUT_W / 2 }, nvinfer1::Dims3{ 1, 2, 2 });
+    nvinfer1::ITensor* inputTensors[] = { s1->getOutput(0), s2->getOutput(0), s3->getOutput(0), s4->getOutput(0) };
     auto cat = network->addConcatenation(inputTensors, 4);
     auto conv = convBlock(network, weightMap, *cat->getOutput(0), outch, ksize, 1, 1, lname + ".conv");
     return conv;
 }
 
-ILayer* bottleneck(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int c1, int c2, bool shortcut, int g, float e, std::string lname) {
-    auto cv1 = convBlock(network, weightMap, input, (int)((float)c2 * e), 1, 1, 1, lname + ".cv1");
-    auto cv2 = convBlock(network, weightMap, *cv1->getOutput(0), c2, 3, 1, g, lname + ".cv2");
+nvinfer1::ILayer* bottleneck(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, int c1, int c2, bool shortcut, int g, float e, std::string lname) {
+        auto cv1 = convBlock(network, weightMap, input, (int)((float)c2 * e), 1, 1, 1, lname + ".cv1");
+        auto cv2 = convBlock(network, weightMap, *cv1->getOutput(0), c2, 3, 1, g, lname + ".cv2");
     if (shortcut && c1 == c2) {
-        auto ew = network->addElementWise(input, *cv2->getOutput(0), ElementWiseOperation::kSUM);
+        auto ew = network->addElementWise(input, *cv2->getOutput(0), nvinfer1::ElementWiseOperation::kSUM);
         return ew;
     }
     return cv2;
 }
 
-ILayer* bottleneckCSP(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int c1, int c2, int n, bool shortcut, int g, float e, std::string lname) {
-    Weights emptywts{ DataType::kFLOAT, nullptr, 0 };
+nvinfer1::ILayer* bottleneckCSP(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, int c1, int c2, int n, bool shortcut, int g, float e, std::string lname) {
+    nvinfer1::Weights emptywts{ nvinfer1::DataType::kFLOAT, nullptr, 0 };
     int c_ = (int)((float)c2 * e);
     auto cv1 = convBlock(network, weightMap, input, c_, 1, 1, 1, lname + ".cv1");
-    auto cv2 = network->addConvolutionNd(input, c_, DimsHW{ 1, 1 }, weightMap[lname + ".cv2.weight"], emptywts);
-    ITensor *y1 = cv1->getOutput(0);
+    auto cv2 = network->addConvolutionNd(input, c_, nvinfer1::DimsHW{ 1, 1 }, weightMap[lname + ".cv2.weight"], emptywts);
+    nvinfer1::ITensor *y1 = cv1->getOutput(0);
     for (int i = 0; i < n; i++) {
         auto b = bottleneck(network, weightMap, *y1, c_, c_, shortcut, g, 1.0, lname + ".m." + std::to_string(i));
         y1 = b->getOutput(0);
     }
-    auto cv3 = network->addConvolutionNd(*y1, c_, DimsHW{ 1, 1 }, weightMap[lname + ".cv3.weight"], emptywts);
+    auto cv3 = network->addConvolutionNd(*y1, c_, nvinfer1::DimsHW{ 1, 1 }, weightMap[lname + ".cv3.weight"], emptywts);
 
-    ITensor* inputTensors[] = { cv3->getOutput(0), cv2->getOutput(0) };
+    nvinfer1::ITensor* inputTensors[] = { cv3->getOutput(0), cv2->getOutput(0) };
     auto cat = network->addConcatenation(inputTensors, 2);
 
-    IScaleLayer* bn = addBatchNorm2d(network, weightMap, *cat->getOutput(0), lname + ".bn", 1e-4);
-    auto lr = network->addActivation(*bn->getOutput(0), ActivationType::kLEAKY_RELU);
+    nvinfer1::IScaleLayer* bn = addBatchNorm2d(network, weightMap, *cat->getOutput(0), lname + ".bn", 1e-4);
+    auto lr = network->addActivation(*bn->getOutput(0), nvinfer1::ActivationType::kLEAKY_RELU);
     lr->setAlpha(0.1);
 
     auto cv4 = convBlock(network, weightMap, *lr->getOutput(0), c2, 1, 1, 1, lname + ".cv4");
     return cv4;
 }
 
-ILayer* SPP(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, ITensor& input, int c1, int c2, int k1, int k2, int k3, std::string lname) {
+nvinfer1::ILayer* SPP(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::ITensor& input, int c1, int c2, int k1, int k2, int k3, std::string lname) {
     int c_ = c1 / 2;
     auto cv1 = convBlock(network, weightMap, input, c_, 1, 1, 1, lname + ".cv1");
 
-    auto pool1 = network->addPoolingNd(*cv1->getOutput(0), PoolingType::kMAX, DimsHW{ k1, k1 });
-    pool1->setPaddingNd(DimsHW{ k1 / 2, k1 / 2 });
-    pool1->setStrideNd(DimsHW{ 1, 1 });
-    auto pool2 = network->addPoolingNd(*cv1->getOutput(0), PoolingType::kMAX, DimsHW{ k2, k2 });
-    pool2->setPaddingNd(DimsHW{ k2 / 2, k2 / 2 });
-    pool2->setStrideNd(DimsHW{ 1, 1 });
-    auto pool3 = network->addPoolingNd(*cv1->getOutput(0), PoolingType::kMAX, DimsHW{ k3, k3 });
-    pool3->setPaddingNd(DimsHW{ k3 / 2, k3 / 2 });
-    pool3->setStrideNd(DimsHW{ 1, 1 });
+    auto pool1 = network->addPoolingNd(*cv1->getOutput(0), nvinfer1::PoolingType::kMAX, nvinfer1::DimsHW{ k1, k1 });
+    pool1->setPaddingNd(nvinfer1::DimsHW{ k1 / 2, k1 / 2 });
+    pool1->setStrideNd(nvinfer1::DimsHW{ 1, 1 });
+    auto pool2 = network->addPoolingNd(*cv1->getOutput(0), nvinfer1::PoolingType::kMAX, nvinfer1::DimsHW{ k2, k2 });
+    pool2->setPaddingNd(nvinfer1::DimsHW{ k2 / 2, k2 / 2 });
+    pool2->setStrideNd(nvinfer1::DimsHW{ 1, 1 });
+    auto pool3 = network->addPoolingNd(*cv1->getOutput(0), nvinfer1::PoolingType::kMAX, nvinfer1::DimsHW{ k3, k3 });
+    pool3->setPaddingNd(nvinfer1::DimsHW{ k3 / 2, k3 / 2 });
+    pool3->setStrideNd(nvinfer1::DimsHW{ 1, 1 });
 
-    ITensor* inputTensors[] = { cv1->getOutput(0), pool1->getOutput(0), pool2->getOutput(0), pool3->getOutput(0) };
+    nvinfer1::ITensor* inputTensors[] = { cv1->getOutput(0), pool1->getOutput(0), pool2->getOutput(0), pool3->getOutput(0) };
     auto cat = network->addConcatenation(inputTensors, 4);
 
     auto cv2 = convBlock(network, weightMap, *cat->getOutput(0), c2, 1, 1, 1, lname + ".cv2");
@@ -276,7 +275,7 @@ ILayer* SPP(INetworkDefinition *network, std::map<std::string, Weights>& weightM
 }
 
 int read_files_in_dir(const char *p_dir_name, std::vector<std::string> &file_names) {
-    DIR *p_dir = opendir("../samples/");
+    DIR *p_dir = opendir(p_dir_name);
     if (p_dir == nullptr) {
         return -1;
     }
@@ -297,10 +296,10 @@ int read_files_in_dir(const char *p_dir_name, std::vector<std::string> &file_nam
     return 0;
 }
 
-std::vector<float> getAnchors(std::map<std::string, Weights>& weightMap)
+std::vector<float> getAnchors(std::map<std::string, nvinfer1::Weights>& weightMap)
 {
     std::vector<float> anchors_yolo;
-    Weights Yolo_Anchors = weightMap["model.24.anchor_grid"];
+    nvinfer1::Weights Yolo_Anchors = weightMap["model.24.anchor_grid"];
     assert(Yolo_Anchors.count == 18);
     int each_yololayer_anchorsnum = Yolo_Anchors.count / 3;
     const float* tempAnchors = (const float*)(Yolo_Anchors.values);
@@ -322,11 +321,12 @@ std::vector<float> getAnchors(std::map<std::string, Weights>& weightMap)
     return anchors_yolo;
 }
 
-IPluginV2Layer* addYoLoLayer(INetworkDefinition *network, std::map<std::string, Weights>& weightMap, IConvolutionLayer* det0, IConvolutionLayer* det1, IConvolutionLayer* det2)
+nvinfer1::IPluginV2Layer* addYoLoLayer(nvinfer1::INetworkDefinition *network, std::map<std::string, nvinfer1::Weights>& weightMap, nvinfer1::IConvolutionLayer* det0, nvinfer1::IConvolutionLayer* det1, 
+nvinfer1::IConvolutionLayer* det2)
 {
     auto creator = getPluginRegistry()->getPluginCreator("YoloLayer_TRT", "1");
     std::vector<float> anchors_yolo = getAnchors(weightMap);
-    PluginField pluginMultidata[4];
+    nvinfer1::PluginField pluginMultidata[4];
     int NetData[4];
     NetData[0] = Yolo::CLASS_NUM;
     NetData[1] = Yolo::INPUT_W;
@@ -335,7 +335,7 @@ IPluginV2Layer* addYoLoLayer(INetworkDefinition *network, std::map<std::string, 
     pluginMultidata[0].data = NetData;
     pluginMultidata[0].length = 3;
     pluginMultidata[0].name = "netdata";
-    pluginMultidata[0].type = PluginFieldType::kFLOAT32;
+    pluginMultidata[0].type = nvinfer1::PluginFieldType::kFLOAT32;
     int scale[3] = { 8, 16, 32 };
     int plugindata[3][8];
     std::string names[3];
@@ -351,14 +351,14 @@ IPluginV2Layer* addYoLoLayer(INetworkDefinition *network, std::map<std::string, 
         pluginMultidata[k].length = 8;
         names[k - 1] = "yolodata" + std::to_string(k);
         pluginMultidata[k].name = names[k - 1].c_str();
-        pluginMultidata[k].type = PluginFieldType::kFLOAT32;
+        pluginMultidata[k].type = nvinfer1::PluginFieldType::kFLOAT32;
     }
-    PluginFieldCollection pluginData;
+    nvinfer1::PluginFieldCollection pluginData;
     pluginData.nbFields = 4;
     pluginData.fields = pluginMultidata;
-    IPluginV2 *pluginObj = creator->createPlugin("yololayer", &pluginData);
-    ITensor* inputTensors_yolo[] = { det2->getOutput(0), det1->getOutput(0), det0->getOutput(0) };
-    auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
+    nvinfer1::IPluginV2 *pluginObj = creator->createPlugin("yololayer", &pluginData);
+    nvinfer1::ITensor* inputTensors_yolo[] = { det2->getOutput(0), det1->getOutput(0), det0->getOutput(0) };
+        auto yolo = network->addPluginV2(inputTensors_yolo, 3, *pluginObj);
     return yolo;
 }
 #endif
