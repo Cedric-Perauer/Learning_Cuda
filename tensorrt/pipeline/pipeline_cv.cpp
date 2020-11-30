@@ -5,7 +5,7 @@
 #include "common.hpp"
 #include "yolov5.cpp"
 #include "rektnet.cpp"
-
+#include <torch/torch.h>
 
 
 int main(int argc, char** argv) {

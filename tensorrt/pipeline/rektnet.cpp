@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
 #include <chrono>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp> 
 #include <opencv2/core/types.hpp>
-#include <torch/torch.h>
 
 #define REKT_DEVICE 0 
 static Logger dLogger;
@@ -24,11 +24,12 @@ class Rektnet {
          int batchSize; 
          int inputIndex;  
 	 int outputIndex;
-         void *buffers[2];
+         void* buffers[2];
 
 	public : 
 
 	Rektnet(const int &batchSize){
+		
 	cudaSetDevice(REKT_DEVICE);
         engine_name = "rektnet.engine"; 
         std::ifstream file(engine_name,std::ios::binary);
@@ -51,19 +52,14 @@ class Rektnet {
         delete[] trtModelStream;
         assert(engine->getNbBindings() == 2);
     // Create stream
-       
-        std::string input_name = engine->getBindingName(0);
-        std::string output_name = engine->getBindingName(1);
-
-	std::cout << "intput tensor : " << input_name << " output tensor " << output_name << std::endl;
-	
 	inputIndex = engine->getBindingIndex("input.1");
         outputIndex = engine->getBindingIndex("160");
         assert(inputIndex == 0);
         assert(outputIndex == 1);
         // Create GPU buffers on device
-        CHECK(cudaMalloc(&buffers[inputIndex], BATCH_SIZE * 3 * REKT_SIZE * REKT_SIZE * sizeof(float)));
-        CHECK(cudaMalloc(&buffers[outputIndex], BATCH_SIZE * REKT_SIZE * REKT_SIZE * 7 * sizeof(float)));
+        
+	CHECK(cudaMalloc(&buffers[inputIndex], batchSize *  3 * REKT_SIZE * REKT_SIZE * sizeof(float)));
+        CHECK(cudaMalloc(&buffers[outputIndex], batchSize *  REKT_SIZE * REKT_SIZE * 7 * sizeof(float)));
 	// Create stream
         CHECK(cudaStreamCreate(&stream));
 	}
@@ -76,7 +72,6 @@ class Rektnet {
          context->destroy(); 
          engine->destroy();
          runtime->destroy();
-  
 	
 	}
 
@@ -90,7 +85,6 @@ class Rektnet {
 	}
         
                 
-
 	void doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
 	    // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
 	    CHECK(cudaMemcpyAsync(buffers[0], input, batchSize * 3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
@@ -126,7 +120,7 @@ class Rektnet {
 
 
 	} 
-
+ 
 
         void inference(const std::string &filename) 
 	{
@@ -154,7 +148,6 @@ class Rektnet {
          auto end = std::chrono::system_clock::now();
         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 	  } 
-
 
 
 
