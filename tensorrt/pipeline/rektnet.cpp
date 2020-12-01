@@ -12,6 +12,8 @@
 static Logger dLogger;
 const int REKT_SIZE = 80; 
 
+typedef float (*OUT)[7][REKT_SIZE][REKT_SIZE]; 
+
 class Rektnet {
         private : 
 	 nvinfer1::IRuntime* runtime; 
@@ -86,16 +88,6 @@ class Rektnet {
            return dst;                      
 	}
         
-                
-	float* doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
-	    // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
-	    CHECK(cudaMemcpyAsync(buffers[0], input,  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
-	    context.enqueue(batchSize, buffers, stream, nullptr);
-	    CHECK(cudaMemcpyAsync(output, buffers[1], REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
-	    cudaStreamSynchronize(stream);
-	    std::cout << "output size" << sizeof(output)/sizeof(output[0]) << std::endl;
-	   return output;     
-	}
 
         void imginfer(const std::string&dir)
 	{
@@ -117,16 +109,9 @@ class Rektnet {
 	}
 	}        
 
-        void soft_argmax(){ 
-    
-        	
-        
-
-
-	} 
  
 
-        void inference(const std::string &filename) 
+        OUT inference(const std::string &filename) 
 	{
 	/*	
            static  float data[1 * 3 *REKT_SIZE *REKT_SIZE];
@@ -160,12 +145,12 @@ class Rektnet {
             cudaStreamSynchronize(stream);
            
 	    data_sz = sizeof(pts)/sizeof(pts[0][1]);
-	  std::cout << "data size" << data_sz << std::endl;
+	  std::cout << "data point " << pts[0][0][0][50]  << std::endl;
          
 
 	  auto end = std::chrono::system_clock::now();
          std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-        
+        return pts;  
 	
        	} 
 
