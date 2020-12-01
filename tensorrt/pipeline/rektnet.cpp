@@ -21,7 +21,7 @@ class Rektnet {
 	 nvinfer1::IExecutionContext* context;
 	 cudaStream_t stream;
          std::string engine_name;
-         int batchSize; 
+         const int batchSize = 1; 
          int inputIndex;  
 	 int outputIndex;
          void* buffers[2];
@@ -57,7 +57,9 @@ class Rektnet {
         assert(inputIndex == 0);
         assert(outputIndex == 1);
         // Create GPU buffers on device
-        
+
+
+
 	CHECK(cudaMalloc(&buffers[inputIndex], batchSize *  3 * REKT_SIZE * REKT_SIZE * sizeof(float)));
         CHECK(cudaMalloc(&buffers[outputIndex], batchSize *  REKT_SIZE * REKT_SIZE * 7 * sizeof(float)));
 	// Create stream
@@ -85,13 +87,15 @@ class Rektnet {
 	}
         
                 
-	void doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
+	float* doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
 	    // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
-	    CHECK(cudaMemcpyAsync(buffers[0], input, batchSize * 3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
+	    CHECK(cudaMemcpyAsync(buffers[0], input,  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
 	    context.enqueue(batchSize, buffers, stream, nullptr);
-	    CHECK(cudaMemcpyAsync(output, buffers[1], batchSize * REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
+	    CHECK(cudaMemcpyAsync(output, buffers[1], REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
 	    cudaStreamSynchronize(stream);
-	    }
+	    std::cout << "output size" << sizeof(output)/sizeof(output[0]) << std::endl;
+	   return output;     
+	}
 
         void imginfer(const std::string&dir)
 	{
@@ -124,9 +128,12 @@ class Rektnet {
 
         void inference(const std::string &filename) 
 	{
-          static float data[BATCH_SIZE * 3 *REKT_SIZE *REKT_SIZE];
-          static float pts[BATCH_SIZE * 7 *REKT_SIZE *REKT_SIZE]; 
-	  
+	/*	
+           static  float data[1 * 3 *REKT_SIZE *REKT_SIZE];
+           static  float pts[1 * 7 *REKT_SIZE *REKT_SIZE]; 
+	  */
+           static  float data[1][3] [REKT_SIZE][REKT_SIZE];
+           static  float pts[1][7][REKT_SIZE][REKT_SIZE]; 
 	  cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" +filename); 
 
           auto start = std::chrono::system_clock::now();
@@ -136,18 +143,31 @@ class Rektnet {
 	  for (int row = 0; row < REKT_SIZE; ++row) {
                 uchar* uc_pixel = pr_img.data + row * pr_img.step;
                 for (int col = 0; col < REKT_SIZE; ++col) {
-                    data[ i] = (float)uc_pixel[2] / 255.0;
-                    data[ i + REKT_SIZE * REKT_SIZE] = (float)uc_pixel[1] / 255.0;
-                    data[ i + 2 * REKT_SIZE * REKT_SIZE] = (float)uc_pixel[0] / 255.0;
+                    data[0][0][row][col] = (float)uc_pixel[2] / 255.0;
+                    data[0][1][row][col] = (float)uc_pixel[1] / 255.0;
+                    data[0][2][row][col] = (float)uc_pixel[0] / 255.0;
                     uc_pixel += 3;
                     ++i;
                 }
             }
           
-	 doInference(*context, stream, buffers, data, pts, BATCH_SIZE);
-         auto end = std::chrono::system_clock::now();
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-	  } 
+	  int data_sz = sizeof(pts)/sizeof(pts[0]);
+	  std::cout << "data size" << data_sz << std::endl;
+         
+	  CHECK(cudaMemcpyAsync(buffers[0], data,  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
+          context->enqueue(batchSize, buffers, stream, nullptr);
+            CHECK(cudaMemcpyAsync(pts, buffers[1], REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
+            cudaStreamSynchronize(stream);
+           
+	    data_sz = sizeof(pts)/sizeof(pts[0][1]);
+	  std::cout << "data size" << data_sz << std::endl;
+         
+
+	  auto end = std::chrono::system_clock::now();
+         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+        
+	
+       	} 
 
 
 

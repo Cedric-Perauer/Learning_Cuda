@@ -136,8 +136,9 @@ i++;
 
 int all(const std::string &img_name, const int &num)
 {
-    std::cout << "start" << std::endl;
       // prepare input data ---------------------------
+   
+        auto start = std::chrono::system_clock::now();
     static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
     //for (int i = 0; i < 3 * INPUT_H * INPUT_W; i++)
     //    data[i] = 1.0;
@@ -149,8 +150,11 @@ int all(const std::string &img_name, const int &num)
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
 		    return 0;}
+             
+        auto end = std::chrono::system_clock::now();
+        std::cout << "img load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
             
-        auto start = std::chrono::system_clock::now();
+        start = std::chrono::system_clock::now();
 	    cv::Mat pr_img = preprocess_img(img); // letterbox BGR to RGB
             int i = 0;
             for (int row = 0; row < INPUT_H; ++row) {
@@ -170,17 +174,18 @@ int all(const std::string &img_name, const int &num)
     	auto& res = batch_res[0];
             nms(res, &prob[0], CONF_THRESH, NMS_THRESH);
             
-        auto end = std::chrono::system_clock::now();
-        std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+        end = std::chrono::system_clock::now();
+        std::cout << "YOLO inf" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
             //std::cout << res.size() << std::endl;
-            cv::Mat img2 = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
+          /*    
+	cv::Mat img2 = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
 		cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
                 cv::putText(img2, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
             cv::imwrite("/home/cedric/Learning_Cuda/tensorrt/pipeline/output/img" + std::to_string(num) + ".jpg", img2);
-
+*/
 }
 
 };
