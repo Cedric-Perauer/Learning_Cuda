@@ -92,7 +92,8 @@ public:
 
   }
 
-  ~YOLO_INF(){
+  ~YOLO_INF()
+  {
  // Release stream and buffers 
     cudaStreamDestroy(stream); 
     CHECK(cudaFree(buffers[inputIndex])); 
@@ -101,9 +102,6 @@ public:
     context->destroy(); 
     engine->destroy();
     runtime->destroy();
-  
-
-
   }
 
 void doInference(nvinfer1::IExecutionContext& context, cudaStream_t& stream, void **buffers, float* input, float* output, int batchSize) {
@@ -129,27 +127,41 @@ if(a==-1)
 int i = 0; 
 for(auto name:names)
 {
-    all(name,i);
+    inference(name,i);
 i++;
 }
 }
 
-int all(const std::string &img_name, const int &num)
+
+
+std::vector<cv::Mat> bboxExtract(std::vector<Yolo::Detection>& res,cv::Mat& img) 
+{ 
+    auto start = std::chrono::system_clock::now();
+  std::vector<cv::Mat> imgs;  
+  for (size_t j = 0; j < res.size(); j++) {
+     cv::Rect roi = get_rect(img, res[j].bbox);  
+     cv::Mat box = img(roi); 
+     imgs.push_back(box); 
+
+  } 
+  std::cout << "img size" << imgs.size()   << std::endl;
+  auto end = std::chrono::system_clock::now();
+  std::cout << "img box processs" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+  return imgs; 
+} 
+
+std::vector<cv::Mat> inference(const std::string &img_name, const int &num)
 {
       // prepare input data ---------------------------
    
         auto start = std::chrono::system_clock::now();
     static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
-    //for (int i = 0; i < 3 * INPUT_H * INPUT_W; i++)
-    //    data[i] = 1.0;
     static float prob[BATCH_SIZE * OUTPUT_SIZE];
               
-    
-        // Run inference
     cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
-		    return 0;}
+		    return {};}
              
         auto end = std::chrono::system_clock::now();
         std::cout << "img load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
@@ -174,9 +186,11 @@ int all(const std::string &img_name, const int &num)
     	auto& res = batch_res[0];
             nms(res, &prob[0], CONF_THRESH, NMS_THRESH);
             
+        std::vector<cv::Mat> ext = bboxExtract(res,img);     
         end = std::chrono::system_clock::now();
         std::cout << "YOLO inf" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-            //std::cout << res.size() << std::endl;
+    	return ext;
+	//std::cout << res.size() << std::endl;
           /*    
 	cv::Mat img2 = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
             for (size_t j = 0; j < res.size(); j++) {

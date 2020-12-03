@@ -7,14 +7,15 @@ def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
     TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
     builder = trt.Builder(TRT_LOGGER)
     builder.fp16_mode = fp16
-    builder.max_batch_size = 30 
+    builder.max_batch_size = 10 
     config = builder.create_builder_config()
     config.max_workspace_size = max_ws
     if fp16:
         config.flags |= 1 << int(trt.BuilderFlag.FP16)
     
-    explicit_batch = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-    network = builder.create_network(explicit_batch)
+    #explicit_batch = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+    network_flags = network_flags | (1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_PRECISION))
+    network = builder.create_network(0)
     with trt.OnnxParser(network, TRT_LOGGER) as parser:
         with open(model_file, 'rb') as model:
             parsed = parser.parse(model.read())

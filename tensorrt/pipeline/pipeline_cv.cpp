@@ -37,17 +37,12 @@ int main(int argc, char** argv) {
      
      //inits
      YOLO_INF yolov5 = YOLO_INF();
-     Rektnet rektnet = Rektnet(10);
-     
-      auto out_rekt = rektnet.inference("samples_rekt/cut.jpg");  
-      auto start = std::chrono::system_clock::now();
-      auto out = flat_softmax(out_rekt); 
-     std::cout << "size" << out.sizes() << std::endl; 
-      //torch::Tensor out = soft_argmax(out_rekt); 
-      std::cout << out << std::endl;
-     auto end = std::chrono::system_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;    
+     Rektnet rektnet = Rektnet(1);
+     std::vector<cv::Mat> imgs = yolov5.inference("samples/img1.jpg",1); 
+     imgs = yolov5.inference("samples/img1.jpg",1); 
       
+     auto out_rekt = rektnet.inference(imgs);  
+     auto out = flat_softmax(out_rekt); 
     return 0;
 }
 
