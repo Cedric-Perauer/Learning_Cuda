@@ -13,7 +13,7 @@ torch::Tensor flat_softmax(OUT input) {
 auto options = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU,0);
 torch::Tensor values_x = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
 torch::Tensor values_y = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
-auto tharray = torch::zeros({1,7,80,80},torch::kFloat32); //or use kF64
+auto tharray = torch::zeros({10,7,80,80},torch::kFloat32); //or use kF64
 
 auto start = std::chrono::system_clock::now();
 //convert array to torch tensor 
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
      
      //inits
      YOLO_INF yolov5 = YOLO_INF();
-     Rektnet rektnet = Rektnet(1);
+     Rektnet rektnet = Rektnet(10);
      
       auto out_rekt = rektnet.inference("samples_rekt/cut.jpg");  
       auto start = std::chrono::system_clock::now();

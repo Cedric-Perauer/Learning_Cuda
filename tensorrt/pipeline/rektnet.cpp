@@ -117,35 +117,35 @@ class Rektnet {
            static  float data[1 * 3 *REKT_SIZE *REKT_SIZE];
            static  float pts[1 * 7 *REKT_SIZE *REKT_SIZE]; 
 	  */
-           static  float data[1][3] [REKT_SIZE][REKT_SIZE];
-           static  float pts[1][7][REKT_SIZE][REKT_SIZE]; 
+           static  float data[10][3][REKT_SIZE][REKT_SIZE];
+           static  float pts[10][7][REKT_SIZE][REKT_SIZE]; 
 	  cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" +filename); 
 
           auto start = std::chrono::system_clock::now();
 	  cv::Mat pr_img = prep_image(img);
 	  int i = 0;
           
+          for(int d = 0; d < batchSize; ++d) {
+	   
 	  for (int row = 0; row < REKT_SIZE; ++row) {
                 uchar* uc_pixel = pr_img.data + row * pr_img.step;
                 for (int col = 0; col < REKT_SIZE; ++col) {
-                    data[0][0][row][col] = (float)uc_pixel[2] / 255.0;
-                    data[0][1][row][col] = (float)uc_pixel[1] / 255.0;
-                    data[0][2][row][col] = (float)uc_pixel[0] / 255.0;
+                    data[d][0][row][col] = (float)uc_pixel[2] / 255.0;
+                    data[d][1][row][col] = (float)uc_pixel[1] / 255.0;
+                    data[d][2][row][col] = (float)uc_pixel[0] / 255.0;
                     uc_pixel += 3;
                     ++i;
                 }
             }
-          
+          }  
 	  int data_sz = sizeof(pts)/sizeof(pts[0]);
 	  std::cout << "data size" << data_sz << std::endl;
          
-	  CHECK(cudaMemcpyAsync(buffers[0], data,  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
+	  CHECK(cudaMemcpyAsync(buffers[0], data, 10*  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
           context->enqueue(batchSize, buffers, stream, nullptr);
-            CHECK(cudaMemcpyAsync(pts, buffers[1], REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
-            cudaStreamSynchronize(stream);
+          CHECK(cudaMemcpyAsync(pts, buffers[1], 10 * REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
+          cudaStreamSynchronize(stream);
            
-	    data_sz = sizeof(pts)/sizeof(pts[0][1]);
-	  std::cout << "data point " << pts[0][0][0][50]  << std::endl;
          
 
 	  auto end = std::chrono::system_clock::now();
