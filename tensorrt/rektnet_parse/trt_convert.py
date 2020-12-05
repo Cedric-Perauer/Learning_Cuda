@@ -2,20 +2,21 @@ import tensorrt as trt
 import pycuda.autoinit 
 import pycuda.driver  
 
-def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
+def build_engine(model_file, max_ws=512*1024*1024*3, fp16=False):
     print("building engine")
     TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
     builder = trt.Builder(TRT_LOGGER)
     builder.fp16_mode = fp16
-    builder.max_batch_size = 10 
+    builder.max_batch_size = 5 
+     
     config = builder.create_builder_config()
     config.max_workspace_size = max_ws
     if fp16:
         config.flags |= 1 << int(trt.BuilderFlag.FP16)
     
-    #explicit_batch = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-    network_flags = network_flags | (1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_PRECISION))
-    network = builder.create_network(0)
+    explicit_batch = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+    #network_flags = network_flags | (1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_PRECISION))
+    network = builder.create_network(explicit_batch)
     with trt.OnnxParser(network, TRT_LOGGER) as parser:
         with open(model_file, 'rb') as model:
             parsed = parser.parse(model.read())
@@ -25,6 +26,6 @@ def build_engine(model_file, max_ws=512*1024*1024, fp16=False):
             engine = builder.build_engine(network, config=config)
             return engine
 
-engine = build_engine("new_keypoints.onnx",True)
+engine = build_engine("new_keypoints5.onnx",True)
 with open('rektnet.engine', 'wb') as f:
     f.write(bytearray(engine.serialize()))

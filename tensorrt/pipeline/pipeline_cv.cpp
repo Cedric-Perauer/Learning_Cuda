@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
      
      //inits
      YOLO_INF yolov5 = YOLO_INF();
-     Rektnet rektnet = Rektnet(1);
+     Rektnet rektnet = Rektnet(10);
      std::vector<cv::Mat> imgs = yolov5.inference("samples/img1.jpg",1); 
      imgs = yolov5.inference("samples/img1.jpg",1); 
       

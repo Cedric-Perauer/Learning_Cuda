@@ -9,7 +9,7 @@ device = "cpu"
 img_sz = 80 
 num_kpt = 7
 softmax_internal = False
-batch_size = 10
+batch_size = 5 
 
 def soft_argmax(inp):
       values_y = torch.linspace(0, (img_sz - 1.) / img_sz, img_sz, dtype=inp.dtype, device=inp.device)
@@ -52,7 +52,7 @@ image_size = (80,80)
 
 image = prep_image(img,image_size)
 prep_img = image.copy()
-for i in range(9): 
+for i in range(batch_size-1): 
      image = np.vstack((image,prep_img))
 image = np.ascontiguousarray(image,dtype=np.float32) 
 
@@ -75,10 +75,10 @@ import time
 start = time.time()
 print("start")
 rektnet.execute_async(batch_size,bindings,stream.handle,None)
-print("duration is :",(time.time()-start)*1000, " ms" )
 
 cuda.memcpy_dtoh_async(rektnet_output1, d_output, stream)
 stream.synchronize() 
+print("duration is :",(time.time()-start)*1000, " ms" )
 out = None
 if not softmax_internal:
   out = output_process(torch.from_numpy(rektnet_output1))

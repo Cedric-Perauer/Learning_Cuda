@@ -150,7 +150,6 @@ class Rektnet {
 
 OUT inference(const std::vector<cv::Mat> &imgs) 
 	{
-          auto start = std::chrono::system_clock::now();
           
           for(int d = 0; d < bs; ++d) {
 	  
@@ -171,19 +170,21 @@ OUT inference(const std::vector<cv::Mat> &imgs)
             }
           }  
          
+          cudaEvent_t start, stop;
+          cudaEventCreate(&start);
+          cudaEventCreate(&stop);
 	  
-          auto st = std::chrono::system_clock::now(); 
 	  CHECK(cudaMemcpyAsync(buffers[0], data, bs*  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
+	  cudaEventRecord(start);
 	  context->enqueue(bs, buffers, stream, nullptr);
-          
-	  auto end = std::chrono::system_clock::now();
+          cudaEventRecord(stop);
 	  CHECK(cudaMemcpyAsync(pts, buffers[1], bs * REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
           cudaStreamSynchronize(stream);
-           
-         
-
-         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms RektNet" << std::endl;
-         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - st).count() << " ms RektNet only" << std::endl;
+          cudaEventSynchronize(stop);
+float milliseconds = 0;
+cudaEventElapsedTime(&milliseconds, start, stop); 
+       
+        std::cout << "kernel execution time " << milliseconds << std::endl;
         return pts;  
 	
        	}
