@@ -12,16 +12,12 @@
 
 int main(int argc, char** argv) {
      //inits
-     /*
      YOLO_INF yolov5 = YOLO_INF();
-     Rektnet rektnet = Rektnet(10);
+     Rektnet rektnet = Rektnet("/home/cedric/torch_test/traced_rektnet.pt"); 
      std::vector<cv::Mat> imgs = yolov5.inference("samples/img1.jpg",1); 
      imgs = yolov5.inference("samples/img1.jpg",1); 
-      
      
-     auto out_rekt = rektnet.inference(imgs);  
-     auto out = flat_softmax(out_rekt); 
-     */
+     out_rekt = rektnet.inference(imgs);  
      return 0;
 }
 
