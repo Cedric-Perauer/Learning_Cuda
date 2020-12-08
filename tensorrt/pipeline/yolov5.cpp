@@ -136,7 +136,6 @@ i++;
 
 std::vector<cv::Mat> bboxExtract(std::vector<Yolo::Detection>& res,cv::Mat& img) 
 { 
-    auto start = std::chrono::system_clock::now();
   std::vector<cv::Mat> imgs;  
   for (size_t j = 0; j < res.size(); j++) {
      cv::Rect roi = get_rect(img, res[j].bbox);  
@@ -145,8 +144,6 @@ std::vector<cv::Mat> bboxExtract(std::vector<Yolo::Detection>& res,cv::Mat& img)
 
   } 
   std::cout << "img size" << imgs.size()   << std::endl;
-  auto end = std::chrono::system_clock::now();
-  std::cout << "img box processs" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
   return imgs; 
 } 
 

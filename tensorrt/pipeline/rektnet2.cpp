@@ -9,12 +9,13 @@ class Rektnet {
    torch::jit::script::Module module;
    std::vector<torch::jit::IValue> inputs;
    torch::Tensor tharray; 
+   
+   public :
 
    Rektnet(const std::string &name){ 
 	   inputs = {}; 
                 try {
-      module = torch::jit::load(name);
-      module.to(torch::Device("cuda:0"));
+      torch::jit::script::Module mod = torch::jit::load("/home/cedric/torch_test/traced_rektnet.pt");
       }
 
      catch (const c10::Error &e) {
@@ -24,7 +25,7 @@ class Rektnet {
     }
 
   ~Rektnet(){}  
-   
+  
   cv::Mat prep_image(const cv::Mat &src)
 	{
 	   cv::Mat dst;
@@ -36,7 +37,7 @@ class Rektnet {
 
   void forward(const std::vector<cv::Mat> &imgs)
   { 
-          int bs= imgs.size(); 
+          int bs= 10; 
 	  float data[bs][3][REKT_SIZE][REKT_SIZE];
 	  
 	  for(int d = 0; d < bs; ++d) {
@@ -56,38 +57,15 @@ class Rektnet {
                     uc_pixel += 3;
                 }
             }
-          }
-	  torch::Tensor inp = std::memcpy(tharray.data_ptr(),data,sizeof(float)*tharray.numel());  
+	  } 
+	  std::cout << "forward" << std::endl;
+	  std::memcpy(tharray.data_ptr(),data,sizeof(float)*tharray.numel());  
+	  
+	  std::cout << "forward2" << std::endl;
+	  inputs.push_back(tharray);
+	  std::cout << "forward3" << std::endl;
 	  auto output = module.forward(inputs).toTensor();	  
   }  
-
 }; 
 
 
-
-/*
-int main() { 
- torch::jit::script::Module module;
-
-        try {
-      module = torch::jit::load("/home/cedric/torch_test/traced_rektnet.pt");     
-     }
-
-     catch (const c10::Error &e) {
-           std::cerr << "error loading module\n";
-           return -1;
-     }
-std::vector<torch::jit::IValue> inputs;
-inputs.push_back(torch::ones({10, 3, 80, 80}).to(torch::Device("cuda:0")));
-
-module.to(torch::Device("cuda:0"));
-auto output = module.forward(inputs).toTensor();
-
-std::cout << output << std::endl;
-//auto end = std::chrono::system_clock::now();
-   //  std::cout << output << std::endl;
-
-  //  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-return 0;
-
-} */
