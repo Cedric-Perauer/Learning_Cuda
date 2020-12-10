@@ -36,7 +36,7 @@ class Rektnet {
         
 	bs = batchSize; 	
 	cudaSetDevice(REKT_DEVICE);
-        engine_name = "rektnet.engine"; 
+        engine_name = "rektnet_trt.engine"; 
         std::ifstream file(engine_name,std::ios::binary);
         
         if(file.good()) {
@@ -150,8 +150,8 @@ class Rektnet {
 
 OUT inference(const std::vector<cv::Mat> &imgs) 
 	{
-          
-          for(int d = 0; d < bs; ++d) {
+          auto start = std::chrono::system_clock::now();
+       for(int d = 0; d < bs; ++d) {
 	  
           int i = d; 		  
 	  if(i >= imgs.size())
@@ -170,22 +170,16 @@ OUT inference(const std::vector<cv::Mat> &imgs)
             }
           }  
          
-          cudaEvent_t start, stop;
-          cudaEventCreate(&start);
-          cudaEventCreate(&stop);
 	  
 	  CHECK(cudaMemcpyAsync(buffers[0], data, bs*  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
-	  cudaEventRecord(start);
 	  context->enqueue(bs, buffers, stream, nullptr);
-          cudaEventRecord(stop);
 	  CHECK(cudaMemcpyAsync(pts, buffers[1], bs * REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
           cudaStreamSynchronize(stream);
-          cudaEventSynchronize(stop);
-float milliseconds = 0;
-cudaEventElapsedTime(&milliseconds, start, stop); 
-       
-        std::cout << "kernel execution time " << milliseconds << std::endl;
-        return pts;  
+        
+
+	auto end = std::chrono::system_clock::now(); 
+        std::cout << " Rektnet time :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl; 
+	return pts;  
 	
        	}
 
