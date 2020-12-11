@@ -15,14 +15,15 @@ class Rektnet {
    Rektnet(const std::string &name){ 
 	   inputs = {}; 
                 try {
-      torch::jit::script::Module mod = torch::jit::load("/home/cedric/torch_test/traced_rektnet.pt");
+      module = torch::jit::load("/home/cedric/torch_test/traced_rektnet.pt");
       }
 
      catch (const c10::Error &e) {
            std::cerr << "error loading module\n";
      }
-     tharray = torch::zeros({10,3,80,80},torch::kFloat32).to(torch::Device("cuda:0")); //or use kF64  
-    }
+     tharray = torch::zeros({10,3,80,80}).to(torch::Device("cuda:0")); //or use kF64  
+     module.to(torch::Device("cuda:0"));  
+   }
 
   ~Rektnet(){}  
   
@@ -39,7 +40,8 @@ class Rektnet {
   { 
           int bs= 10; 
 	  float data[bs][3][REKT_SIZE][REKT_SIZE];
-	  
+          inputs = {};            
+
 	  for(int d = 0; d < bs; ++d) {
 	  
           int i = d; 		  
@@ -58,12 +60,9 @@ class Rektnet {
                 }
             }
 	  } 
-	  std::cout << "forward" << std::endl;
-	  std::memcpy(tharray.data_ptr(),data,sizeof(float)*tharray.numel());  
+	  //std::memcpy(tharray.data_ptr(),data,sizeof(float)*tharray.numel());  
 	  
-	  std::cout << "forward2" << std::endl;
 	  inputs.push_back(tharray);
-	  std::cout << "forward3" << std::endl;
 	  auto output = module.forward(inputs).toTensor();	  
   }  
 }; 
