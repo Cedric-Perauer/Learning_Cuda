@@ -36,7 +36,7 @@ class Rektnet {
         
 	bs = batchSize; 	
 	cudaSetDevice(REKT_DEVICE);
-        engine_name = "rektnet_trt.engine"; 
+        engine_name = "rektnet.engine"; 
         std::ifstream file(engine_name,std::ios::binary);
         
         if(file.good()) {
