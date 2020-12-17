@@ -8,7 +8,6 @@
 
 
 
-#define USE_FP32  // comment out this if want to use FP32
 #define DEVICE 0  // GPU id
 #define NMS_THRESH 0.5
 #define CONF_THRESH 0.4
@@ -47,6 +46,9 @@ public:
   void* buffers[2];
   int inputIndex ;
   int outputIndex ;
+  std::vector<std::vector<float>> box_coords;  
+  std::vector<Yolo::Detection> res; 
+  std::vector<Yolo::Detection> res_sorted; 
 
   YOLO_INF() {
     	  // load engine nvinfer1::weights 
@@ -133,29 +135,50 @@ i++;
 }
 
 
-
-std::vector<cv::Mat> bboxExtract(std::vector<Yolo::Detection>& res,cv::Mat& img) 
+//extract the boxes to pass them onto the RektNet CNN 
+std::vector<cv::Mat> bboxExtract(cv::Mat& img) 
 { 
+  
+  box_coords = {}; 
+  res_sorted = {}; 
   std::vector<cv::Mat> imgs;  
-  for (size_t j = 0; j < res.size(); j++) {
+  std::vector<cv::Mat> imgs_sorted;  
+  for (size_t j = 0; j < res.size(); j++) 
+  {
      cv::Rect roi = get_rect(img, res[j].bbox);  
      cv::Mat box = img(roi); 
+     box_coords.push_back({roi.x,roi.y,roi.width,roi.height,j});                            
      imgs.push_back(box); 
+  } 
+   
+  std::sort(box_coords.begin(),box_coords.end(),[](std::vector<float> one, std::vector<float> two)
+    {
+    return (one[3] * one[2]) > (two[3] * two[2]);
+    });
+  
+
+  //get sorted boxes based on size 
+  for(int i = 0;i < 10; ++i)
+  {
+    res_sorted.push_back(res[box_coords[i][4]]); 
+    imgs_sorted.push_back(imgs[box_coords[i][4]]); 
 
   } 
+
+
   std::cout << "img size" << imgs.size()   << std::endl;
-  return imgs; 
+  return imgs_sorted; 
 } 
 
 std::vector<cv::Mat> inference(const std::string &img_name, const int &num)
 {
       // prepare input data ---------------------------
    
-        auto start = std::chrono::system_clock::now();
+    auto start = std::chrono::system_clock::now();
     static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
     static float prob[BATCH_SIZE * OUTPUT_SIZE];
               
-    cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
+    cv::Mat img = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/" + img_name);
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
 		    return {};}
@@ -180,23 +203,23 @@ std::vector<cv::Mat> inference(const std::string &img_name, const int &num)
         doInference(*context, stream, buffers, data, prob, BATCH_SIZE);
         std::vector<std::vector<Yolo::Detection>> batch_res(1);
         
-    	auto& res = batch_res[0];
-            nms(res, &prob[0], CONF_THRESH, NMS_THRESH);
+    	res = batch_res[0];
+        nms(res, &prob[0], CONF_THRESH, NMS_THRESH);
             
-        std::vector<cv::Mat> ext = bboxExtract(res,img);     
+        std::vector<cv::Mat> ext = bboxExtract(img);     
         end = std::chrono::system_clock::now();
         std::cout << "YOLO inf" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-    	return ext;
 	//std::cout << res.size() << std::endl;
-          /*    
-	cv::Mat img2 = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" + img_name);
+	/*
+	cv::Mat img2 = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/" + img_name);
             for (size_t j = 0; j < res.size(); j++) {
                 cv::Rect r = get_rect(img, res[j].bbox);
 		cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
                 cv::putText(img2, std::to_string((int)res[j].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
             }
-            cv::imwrite("/home/cedric/Learning_Cuda/tensorrt/pipeline/output/img" + std::to_string(num) + ".jpg", img2);
-*/
+            cv::imwrite("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/output/img" + std::to_string(num) + ".jpg", img2);
+       */
+	    return ext; 
 }
 
 };

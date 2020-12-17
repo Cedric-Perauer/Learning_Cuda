@@ -48,8 +48,8 @@ return torch::stack({exp_x, exp_y},-1);
 void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet)
 {
 
-cv::Mat img2 = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/samples/img1.jpg");
-for(size_t i=0; i < res.size();i++)
+cv::Mat img2 = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/samples/img3.jpg");
+for(size_t i=0; i < 10;i++)
 { 
           cv::Rect r = get_rect(img2, res[i].bbox);
 	  cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
@@ -58,7 +58,7 @@ for(size_t i=0; i < res.size();i++)
 	  for(int j = 0; j < 7 ;++j)
 	  {    
 		  std::vector<float> v(rektnet[i][j].data_ptr<float>(), rektnet[i][j].data_ptr<float>() + rektnet[i][j].numel());
-		  cv::circle(img2,cv::Point(r.x+int(v[0] * r.width), r.y + int(v[1] * r.height)),2,cv::Scalar(255,0,0),1);  
+		  cv::circle(img2,cv::Point(r.x+int(v[0] * r.width), r.y + int(v[1] * r.height)),2,cv::Scalar(255,0,0),3);  
 
 	  }
 
@@ -84,19 +84,18 @@ int main(int argc, char** argv)
      Rektnet rektnet = Rektnet(10);
      Pipeline pipeline = Pipeline(); 
      
-     std::vector<cv::Mat> imgs = yolov5.inference("samples/img1.jpg",1); 
-     for(int i= 0; i < 1; ++i)
+     std::vector<cv::Mat> imgs = yolov5.inference("samples/img3.jpg",1); 
+     for(int i= 0; i < 10; ++i)
      { 
      auto start = std::chrono::system_clock::now();
 
-     imgs = yolov5.inference("samples/img1.jpg",1); 
+     imgs = yolov5.inference("samples/img3.jpg",1); 
       
      auto out_rekt = rektnet.inference(imgs);  
      auto out = pipeline.flat_softmax(out_rekt); 
      auto end = std::chrono::system_clock::now();
-     std::cout << out << std::endl; 
     std::cout << "total time :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-     pipeline.plot_pts(yolov5.res,yolov5.box_coords,out ); 
+     pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out ); 
      }
      return 0;
 }
