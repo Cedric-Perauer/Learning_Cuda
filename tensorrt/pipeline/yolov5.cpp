@@ -28,15 +28,15 @@ const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
 
 
-
-
 class YOLO_INF
 {
 public:
   
+  std::vector<std::vector<cv::Point>> car_coordinates; 
+  std::vector<std::vector<cv::Point>> edge_coordinates; 
+
+
   std::string engine_name ;
-  //static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
-  //static float prob[BATCH_SIZE * OUTPUT_SIZE];
   nvinfer1::IRuntime* runtime;
   nvinfer1::ICudaEngine* engine;
   char *trtModelStream{ nullptr };
@@ -44,15 +44,17 @@ public:
   nvinfer1::IExecutionContext* context;
   cudaStream_t stream;
   void* buffers[2];
-  int inputIndex ;
-  int outputIndex ;
+  int inputIndex;
+  int outputIndex;
   std::vector<std::vector<float>> box_coords;  
   std::vector<Yolo::Detection> res; 
   std::vector<Yolo::Detection> res_sorted; 
 
   YOLO_INF() {
-    	  // load engine nvinfer1::weights 
-        cudaSetDevice(DEVICE);
+    //create I/O arrays 
+      
+    // load engine nvinfer1::weights 
+    cudaSetDevice(DEVICE);
     // create a model using the API directly and serialize it to a stream
     char *trtModelStream{ nullptr };
     size_t size{ 0 };
@@ -69,6 +71,45 @@ public:
             file.read(trtModelStream, size);
             file.close();
              }
+    
+	//masks
+	car_coordinates.push_back(std::vector<cv::Point>()); 
+	//car mask 
+	car_coordinates[0].push_back(cv::Point(40,1200)); 
+	car_coordinates[0].push_back(cv::Point(54,1180)); 
+	car_coordinates[0].push_back(cv::Point(291,1129)); 
+	car_coordinates[0].push_back(cv::Point(630,1095)); 
+	car_coordinates[0].push_back(cv::Point(696,983)); 
+	car_coordinates[0].push_back(cv::Point(728,962)); 
+	car_coordinates[0].push_back(cv::Point(811,938)); 
+	car_coordinates[0].push_back(cv::Point(845,937)); 
+	car_coordinates[0].push_back(cv::Point(843,883)); 
+	car_coordinates[0].push_back(cv::Point(855,883)); 
+	car_coordinates[0].push_back(cv::Point(858,942)); 
+	car_coordinates[0].push_back(cv::Point(947,959)); 
+	car_coordinates[0].push_back(cv::Point(979,969)); 
+	car_coordinates[0].push_back(cv::Point(996,982)); 
+	car_coordinates[0].push_back(cv::Point(1121,1091)); 
+	car_coordinates[0].push_back(cv::Point(1186,1113)); 
+	car_coordinates[0].push_back(cv::Point(1292,1113)); 
+	car_coordinates[0].push_back(cv::Point(1431,1131)); 
+	car_coordinates[0].push_back(cv::Point(1600,1135)); 
+	car_coordinates[0].push_back(cv::Point(1600,1200)); 
+	//edge mask
+	edge_coordinates.push_back(std::vector<cv::Point>()); 
+	edge_coordinates[0].push_back(cv::Point(0,300)); 
+	edge_coordinates[0].push_back(cv::Point(0,300)); 
+	edge_coordinates[0].push_back(cv::Point(0,1200)); 
+	edge_coordinates[0].push_back(cv::Point(1600,1200)); 
+	edge_coordinates[0].push_back(cv::Point(1600,300)); 
+	edge_coordinates[0].push_back(cv::Point(1580,300)); 
+	edge_coordinates[0].push_back(cv::Point(1580,1180)); 
+	edge_coordinates[0].push_back(cv::Point(20,1180)); 
+	edge_coordinates[0].push_back(cv::Point(20,300)); 
+
+
+	
+
 
     // prepare input data ---------------------------
     runtime = nvinfer1::createInferRuntime(gLogger);
@@ -177,13 +218,15 @@ std::vector<cv::Mat> inference(const std::string &img_name, const int &num)
     auto start = std::chrono::system_clock::now();
     static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
     static float prob[BATCH_SIZE * OUTPUT_SIZE];
-              
+auto end = std::chrono::system_clock::now();
+ std::cout << "array load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+start = std::chrono::system_clock::now();
     cv::Mat img = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/" + img_name);
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
 		    return {};}
              
-        auto end = std::chrono::system_clock::now();
+        end = std::chrono::system_clock::now();
         std::cout << "img load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
             
         start = std::chrono::system_clock::now();
