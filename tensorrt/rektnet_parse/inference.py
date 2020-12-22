@@ -4,12 +4,13 @@ import pycuda.driver as cuda
 import cv2 
 import numpy as np
 import torch 
+import pdb
 
 device = "cpu"
 img_sz = 80 
 num_kpt = 7
 softmax_internal = False
-batch_size = 5 
+batch_size = 1
 
 def soft_argmax(inp):
       values_y = torch.linspace(0, (img_sz - 1.) / img_sz, img_sz, dtype=inp.dtype, device=inp.device)
@@ -20,14 +21,17 @@ def soft_argmax(inp):
 
 def flat_softmax(inp):
     flat = inp.view(-1,img_sz*img_sz)
+    pdb.set_trace()
     flat = torch.nn.functional.softmax(flat,1)
     #expand out again 
+    pdb.set_trace()
     hm  =  flat.view(-1,num_kpt,img_sz,img_sz)
     return hm 
 
 
 def output_process(inp):
     hm = flat_softmax(inp)
+    pdb.set_trace()
     out = soft_argmax(hm)
     return out 
 
@@ -72,13 +76,15 @@ d_output = cuda.mem_alloc(rektnet_output1.nbytes)
 bindings = [int(d_input_ids),int(d_output)] 
 ##forward pass 
 import time
-start = time.time()
-print("start")
-rektnet.execute_async(batch_size,bindings,stream.handle,None)
+for i in range(100):
+    start = time.time()
+    print("start")
+    rektnet.execute_async(batch_size,bindings,stream.handle,None)
 
-cuda.memcpy_dtoh_async(rektnet_output1, d_output, stream)
-stream.synchronize() 
-print("duration is :",(time.time()-start)*1000, " ms" )
+    cuda.memcpy_dtoh_async(rektnet_output1, d_output, stream)
+    stream.synchronize() 
+    print("duration is :",(time.time()-start)*1000, " ms" )
+
 out = None
 if not softmax_internal:
   out = output_process(torch.from_numpy(rektnet_output1))
@@ -86,7 +92,9 @@ if not softmax_internal:
 else : 
     out = rektnet_output1
 
-#print(out)
+import pdb
+pdb.set_trace()
+
 """
 for pt in out[0] : 
     x = pt[0].item() * img_sz

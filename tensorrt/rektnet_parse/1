@@ -26,6 +26,6 @@ def build_engine(model_file, max_ws=512*1024*1024*3, fp16=False):
             engine = builder.build_engine(network, config=config)
             return engine
 
-engine = build_engine("new_keypoints_bs1.onnx",True)
+engine = build_engine("new_keypoints.onnx",True)
 with open('rektnet.engine', 'wb') as f:
     f.write(bytearray(engine.serialize()))
