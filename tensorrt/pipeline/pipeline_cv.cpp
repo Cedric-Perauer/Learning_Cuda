@@ -8,31 +8,83 @@
 #include "rektnet.cpp"
 #include <torch/torch.h>
 
+const float FOCAL_LENGTH = 1.2e-3; 
+const float CONE_HEIGHT = 0.3;
+const float PIXEL_SIZE = 6e-6; 
+const int BATCH_SIZE_REKT = 10; 
+
+using namespace torch::indexing; 
+
 class Pipeline { 
 
 torch::Tensor values_x; 
 torch::Tensor values_y; 
 torch::Tensor tharray; 
+//masks for the car and the image edge 
+std::vector<std::vector<cv::Point>> car_coordinates; 
+std::vector<std::vector<cv::Point>> edge_coordinates; 
+torch::TensorOptions options; 
+torch::Tensor tharray_gpu; 
+torch::Tensor slopes;
 
 public : 
 
-Pipeline(){ 
-auto options = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU,0);
+Pipeline(){
+
+//tensors and tensor options 	
+options = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA,0);
 values_x = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
 values_y = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
-tharray = torch::zeros({10,7,80,80},torch::kFloat32); //or use kF64
+tharray = torch::zeros({BATCH_SIZE_REKT,7,80,80},torch::kFloat32).to(torch::kCPU); //or use kF64
+tharray_gpu = torch::zeros({BATCH_SIZE_REKT,7,80,80},torch::kFloat32).to(torch::kCUDA); 
 
+//masks
+car_coordinates.push_back(std::vector<cv::Point>()); 
+//car mask 
+car_coordinates[0].push_back(cv::Point(40,1200)); 
+car_coordinates[0].push_back(cv::Point(54,1180)); 
+car_coordinates[0].push_back(cv::Point(291,1129)); 
+car_coordinates[0].push_back(cv::Point(630,1095)); 
+car_coordinates[0].push_back(cv::Point(696,983)); 
+car_coordinates[0].push_back(cv::Point(728,962)); 
+car_coordinates[0].push_back(cv::Point(811,938)); 
+car_coordinates[0].push_back(cv::Point(845,937)); 
+car_coordinates[0].push_back(cv::Point(843,883)); 
+car_coordinates[0].push_back(cv::Point(855,883)); 
+car_coordinates[0].push_back(cv::Point(858,942)); 
+car_coordinates[0].push_back(cv::Point(947,959)); 
+car_coordinates[0].push_back(cv::Point(979,969)); 
+car_coordinates[0].push_back(cv::Point(996,982)); 
+car_coordinates[0].push_back(cv::Point(1121,1091)); 
+car_coordinates[0].push_back(cv::Point(1186,1113)); 
+car_coordinates[0].push_back(cv::Point(1292,1113)); 
+car_coordinates[0].push_back(cv::Point(1431,1131)); 
+car_coordinates[0].push_back(cv::Point(1600,1135)); 
+car_coordinates[0].push_back(cv::Point(1600,1200)); 
+//edge mask
+edge_coordinates.push_back(std::vector<cv::Point>()); 
+edge_coordinates[0].push_back(cv::Point(0,300)); 
+edge_coordinates[0].push_back(cv::Point(0,300)); 
+edge_coordinates[0].push_back(cv::Point(0,1200)); 
+edge_coordinates[0].push_back(cv::Point(1600,1200)); 
+edge_coordinates[0].push_back(cv::Point(1600,300)); 
+edge_coordinates[0].push_back(cv::Point(1580,300)); 
+edge_coordinates[0].push_back(cv::Point(1580,1180)); 
+edge_coordinates[0].push_back(cv::Point(20,1180)); 
+edge_coordinates[0].push_back(cv::Point(20,300)); 
+
+slopes = torch::ones({BATCH_SIZE_REKT}).to(torch::kCUDA);  
 } 
 
 ~Pipeline(){}
 
 torch::Tensor flat_softmax(OUT input) {
 
-
 auto start = std::chrono::system_clock::now();
-//convert array to torch tensor 
+//convert array to torch tensor and move it to the GPU 
 std::memcpy(tharray.data_ptr(),input,sizeof(float)*tharray.numel());
-torch::Tensor flat = tharray.view({-1,REKT_SIZE*REKT_SIZE}); 
+tharray_gpu = tharray.to(torch::kCUDA); 
+torch::Tensor flat = tharray_gpu.view({-1,REKT_SIZE*REKT_SIZE}); 
 flat = torch::nn::functional::softmax(flat,1);
 torch::Tensor hm = flat.view({-1,7,REKT_SIZE,REKT_SIZE}); 
 torch::Tensor exp_y = (hm.sum(3) * values_y).sum(-1); 
@@ -45,23 +97,53 @@ auto end = std::chrono::system_clock::now();
 return torch::stack({exp_x, exp_y},-1); 
 } 
 
+
+torch::Tensor distance_calculate(const torch::Tensor &data_batch) {
+     
+     auto start = std::chrono::system_clock::now(); 
+     torch::Tensor slope = -1 * (data_batch.index({"...",6,1}) - data_batch.index({"...",5,1}))/(data_batch.index({"...",6,0}) - data_batch.index({"...",5,0})); 
+     torch::Tensor relu_data = torch::relu(slope);
+     torch::Tensor t = at::nonzero(relu_data);
+     slopes = slopes.index_put_({t},-1);
+
+     //torch::Tensor mid1 = data_batch.index({"...",Slice(5,7),1}) - data_batch.index({"...",Slice(5,7),1});  
+     torch::Tensor mid1 = data_batch.index({"...",6,Slice(0,2)}) - data_batch.index({"...",5,Slice(0,2)}); 
+     torch::Tensor mid2 = torch::ones({mid1.sizes()[0],2}).to(torch::kCUDA) * 0.5 * torch::stack({slopes,slopes},1);
+     torch::Tensor mid3 = data_batch.index({"...",5,Slice(0,2)});
+     
+     torch::Tensor mid_pts = mid1 * mid2 + mid3;  
+     //----------------------------------TO-DO----------------------------CHANGE HEIGHT of 123---------
+     torch::Tensor top_pt = (mid_pts - data_batch.index({"...",0,Slice(0,2)})) * 123 ;  
+     torch::Tensor img_h = torch::norm(top_pt,2,1); 
+     torch::Tensor hbb = img_h * PIXEL_SIZE; 
+
+     torch::Tensor distances = FOCAL_LENGTH / (hbb * CONE_HEIGHT);  	 
+     return distances;
+
+} 
+
 void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet)
 {
 
 cv::Mat img2 = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/samples/img3.jpg");
-for(size_t i=0; i < 10;i++)
+for(size_t i=0; i < BATCH_SIZE_REKT;i++)
 { 
           cv::Rect r = get_rect(img2, res[i].bbox);
 	  cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
           cv::putText(img2, std::to_string((int)res[i].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-	  
+	  std::cout << "box out " << std::endl; 
+          
+	  std::cout << rektnet.sizes() << std::endl; 
+	  rektnet = rektnet.to(torch::kCPU); 
 	  for(int j = 0; j < 7 ;++j)
 	  {    
 		  std::vector<float> v(rektnet[i][j].data_ptr<float>(), rektnet[i][j].data_ptr<float>() + rektnet[i][j].numel());
 		  cv::circle(img2,cv::Point(r.x+int(v[0] * r.width), r.y + int(v[1] * r.height)),2,cv::Scalar(255,0,0),3);  
 
 	  }
-
+	  std::cout << "point out " << std::endl; 
+          cv::drawContours(img2,car_coordinates,0, cv::Scalar(255,0,0),cv::FILLED, 8 );
+          cv::drawContours(img2,edge_coordinates,0, cv::Scalar(255,0,0),cv::FILLED, 8 );
 
 }	
 
@@ -85,7 +167,7 @@ int main(int argc, char** argv)
      Pipeline pipeline = Pipeline(); 
      
      std::vector<cv::Mat> imgs = yolov5.inference("samples/img3.jpg",1); 
-     for(int i= 0; i < 10; ++i)
+     for(int i= 0; i < 100; ++i)
      { 
      auto start = std::chrono::system_clock::now();
 
@@ -93,9 +175,10 @@ int main(int argc, char** argv)
       
      auto out_rekt = rektnet.inference(imgs);  
      auto out = pipeline.flat_softmax(out_rekt); 
+     //auto dist = pipeline.distance_calculate(out); 
      auto end = std::chrono::system_clock::now();
-    std::cout << "total time :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-     pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out ); 
+     std::cout << "total time :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+     //pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out ); 
      }
      return 0;
 }
