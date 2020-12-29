@@ -26,8 +26,8 @@ class Rektnet {
          int inputIndex;  
 	 int outputIndex;
          void* buffers[2];
-         float data[10][3][REKT_SIZE][REKT_SIZE];
-         float pts[10][7][REKT_SIZE][REKT_SIZE];
+         float data[BATCH_SIZE_REKT][3][REKT_SIZE][REKT_SIZE];
+         float pts[BATCH_SIZE_REKT][7][REKT_SIZE][REKT_SIZE];
          int bs; 
 
 	public : 
@@ -91,63 +91,6 @@ class Rektnet {
            return dst;                      
 	}
         
-/*
-        void imginfer(const std::string&dir)
-	{
-	std::vector<std::string> names = {"samples/cut.jpg","samples/cut.jpg","samples/cut.jpg","samples/cut.jpg","samples/cut.jpg","samples/cut.jpg"};
-	//auto a = read_files_in_dir(dir.c_str(),names);
-	if(a==-1)
-	{
-		std::cout << "No files in " << dir.c_str() << std::endl;
-		return;
-	}
-	int i = 0; 
-	for(auto name:names)
-	{
-	    inference(name);
-	i++;
-	}
-	}        
-
- 
-        OUT inference(const std::string &filename) 
-	{
-	  cv::Mat img = cv::imread("/home/cedric/Learning_Cuda/tensorrt/pipeline/" +filename); 
-
-          auto start = std::chrono::system_clock::now();
-	  cv::Mat pr_img = prep_image(img);
-	  int i = 0;
-          
-          for(int d = 0; d < batchSize; ++d) {
-	   
-	  for (int row = 0; row < REKT_SIZE; ++row) {
-                uchar* uc_pixel = pr_img.data + row * pr_img.step;
-                for (int col = 0; col < REKT_SIZE; ++col) {
-                    data[d][0][row][col] = (float)uc_pixel[2] / 255.0;
-                    data[d][1][row][col] = (float)uc_pixel[1] / 255.0;
-                    data[d][2][row][col] = (float)uc_pixel[0] / 255.0;
-                    uc_pixel += 3;
-                    ++i;
-                }
-            }
-          }  
-	  int data_sz = sizeof(pts)/sizeof(pts[0]);
-	  std::cout << "data size" << data_sz << std::endl;
-         
-	  CHECK(cudaMemcpyAsync(buffers[0], data, 10*  3 * REKT_SIZE * REKT_SIZE * sizeof(float), cudaMemcpyHostToDevice, stream));
-          context->enqueue(batchSize, buffers, stream, nullptr);
-          CHECK(cudaMemcpyAsync(pts, buffers[1], 10 * REKT_SIZE *REKT_SIZE * 7 * sizeof(float), cudaMemcpyDeviceToHost, stream));
-          cudaStreamSynchronize(stream);
-           
-         
-
-	  auto end = std::chrono::system_clock::now();
-         std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-        return pts;  
-	
-       	} 
-*/
-
 OUT inference(const std::vector<cv::Mat> &imgs) 
 	{
           auto start = std::chrono::system_clock::now();

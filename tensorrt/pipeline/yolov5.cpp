@@ -26,7 +26,7 @@ static const int OUTPUT_SIZE = Yolo::MAX_OUTPUT_BBOX_COUNT * sizeof(Yolo::Detect
 const char* INPUT_BLOB_NAME = "data";
 const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
-
+const int BATCH_SIZE_REKT = 10; 
 
 class YOLO_INF
 {
@@ -46,8 +46,10 @@ public:
   void* buffers[2];
   int inputIndex;
   int outputIndex;
-  std::vector<std::vector<float>> box_coords;  
-  std::vector<Yolo::Detection> res; 
+  std::vector<std::vector<float>> box_coords; //box coordinates 
+  std::vector<std::vector<float>> box_coords_sorted; //box coordinates sorted
+  float boxes[BATCH_SIZE_REKT][5]; //box coordinates sorted
+  std::vector<Yolo::Detection> res; //bounding box results final after sorting 
   std::vector<Yolo::Detection> res_sorted; 
 
   YOLO_INF() {
@@ -181,29 +183,71 @@ std::vector<cv::Mat> bboxExtract(cv::Mat& img)
 { 
   
   box_coords = {}; 
+  box_coords_sorted = {}; 
   res_sorted = {}; 
   std::vector<cv::Mat> imgs;  
   std::vector<cv::Mat> imgs_sorted;  
   for (size_t j = 0; j < res.size(); j++) 
-  {
+  {  
+     //get bounding box 
      cv::Rect roi = get_rect(img, res[j].bbox);  
      cv::Mat box = img(roi); 
-     box_coords.push_back({roi.x,roi.y,roi.width,roi.height,j});                            
-     imgs.push_back(box); 
+     //box_coords.push_back({roi.x,roi.y,roi.width,roi.height,j});     
+
+     //extract point coordinates 
+     cv::Point top_left = cv::Point(roi.x,roi.y);      
+     cv::Point top_right = cv::Point(roi.x + roi.width,roi.y );      
+     cv::Point bot_left = cv::Point(roi.x,roi.y + roi.height);      
+     cv::Point bot_right = cv::Point(roi.x + roi.width,roi.y + roi.height);
+     std::vector<cv::Point> pts = {top_left,top_right,bot_left,bot_right}; 
+     
+     //check if coords are inside the car mask
+     int inside = 0; 
+     for(cv::Point pt : pts)
+     { 
+	     float dist_car = (float)pointPolygonTest(car_coordinates[0], pt, true);
+	     float dist_edge = (float)pointPolygonTest(edge_coordinates[0], pt, false);
+             
+	     
+	     if (dist_car < 10) 
+	     {  dist_car = -1.0;}  
+	     else { dist_car = 1.0;} 
+             
+	     if (dist_car == 1.0 || dist_edge == 1.0 || dist_edge == 0.0) 
+	     { inside = 1.0;  }
+     }
+    
+     if (inside == 0) 
+     {
+      box_coords.push_back({roi.x,roi.y,roi.width,roi.height,j});
+     }
+     else { 
+
+     std::cout << "no " << imgs.size() << std::endl;   
+     }
+
+      imgs.push_back(box); 
   } 
-   
+  std::cout << "box coords size " << box_coords.size() << std::endl;   
   std::sort(box_coords.begin(),box_coords.end(),[](std::vector<float> one, std::vector<float> two)
     {
     return (one[3] * one[2]) > (two[3] * two[2]);
     });
   
 
+  std::cout << "box coords size " << box_coords.size() << std::endl;   
   //get sorted boxes based on size 
-  for(int i = 0;i < 10; ++i)
+  for(int i = 0;i < BATCH_SIZE_REKT; ++i)
   {
-    res_sorted.push_back(res[box_coords[i][4]]); 
+    std::cout << box_coords[i][4] << std::endl; 
+    res_sorted.push_back(res[box_coords[i][4]]);
+    std::cout << "yes " << std::endl; 
     imgs_sorted.push_back(imgs[box_coords[i][4]]); 
-
+    box_coords_sorted.push_back(box_coords[i]);  
+    for(int j = 0; j < 5; j++)
+    {
+       boxes[i][j] = box_coords[i][j]; 
+    } 
   } 
 
 
@@ -218,9 +262,9 @@ std::vector<cv::Mat> inference(const std::string &img_name, const int &num)
     auto start = std::chrono::system_clock::now();
     static float data[BATCH_SIZE * 3 * INPUT_H * INPUT_W];
     static float prob[BATCH_SIZE * OUTPUT_SIZE];
-auto end = std::chrono::system_clock::now();
- std::cout << "array load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-start = std::chrono::system_clock::now();
+    auto end = std::chrono::system_clock::now();
+    std::cout << "array load" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+    start = std::chrono::system_clock::now();
     cv::Mat img = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/" + img_name);
             if (img.empty()) 
 	    {    std::cout << "img is empty " << std::endl;
