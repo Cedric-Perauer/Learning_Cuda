@@ -11,6 +11,7 @@
 const float FOCAL_LENGTH = 1.2e-3; 
 const float CONE_HEIGHT = 0.3;
 const float PIXEL_SIZE = 6e-6; 
+const int IMG_HALF = 800; 
 
 using namespace torch::indexing; 
 
@@ -108,9 +109,9 @@ return torch::stack({exp_x, exp_y},-1);
 
 torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)[5] ) {
      
-     auto start = std::chrono::system_clock::now(); 
-     //heights of bounding boxes to Tensor  
+     auto start = std::chrono::system_clock::now(); //only time based 
      
+     //heights of bounding boxes to Tensor  
      std::memcpy(yolo_out.data_ptr(),input,sizeof(float)*yolo_out.numel());
      yolo_out_gpu = yolo_out.to(torch::kCUDA); 
      
@@ -133,13 +134,27 @@ torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)
      torch::Tensor top_pt = (mid_pts - data_batch.index({"...",0,Slice(0,2)}));  
      torch::Tensor img_h = torch::norm(top_pt,2,1) *  yolo_out_gpu.index({"...",3}); 
      torch::Tensor hbb = img_h * PIXEL_SIZE; 
-
+     
+     //compute distances 
      torch::Tensor distances = FOCAL_LENGTH / (hbb * CONE_HEIGHT);  	 
+     
+
+     //compute x pose ------------------------------------------------------
+     torch::Tensor bbox_xcenter = PIXEL_SIZE * (yolo_out_gpu.index({"...",2}) - IMG_HALF); //compute x center pose as offset from middle line of the image 
+     torch::Tensor widths = (bbox_xcenter * distance) / FOCAL_LENGTH; //compute x pose in 3D space 
+
+
+    //time based 
      auto end = std::chrono::system_clock::now();
      std::cout << "total time depth estimation :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
      std::cout << "distances " << distances << std::endl; 
-     return distances;
 
+     //return distances 
+     return distances;  
+
+     //uncomment this after fixing plot function and so on 
+     //return stacked x,y poses in 3D space
+     //return torch::stack({distances,widths},1); 
 } 
 
 void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances)
