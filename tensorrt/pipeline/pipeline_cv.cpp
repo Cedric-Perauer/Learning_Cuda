@@ -8,12 +8,40 @@
 #include "torch/torch.h"
 #include <sstream> 
 
-const float FOCAL_LENGTH = 1.2e-3; 
-const float CONE_HEIGHT = 0.3;
-const float PIXEL_SIZE = 6e-6; 
-const int IMG_HALF = 800; 
+const float FOCAL_LENGTH = 1.2e-3; //the same for x and y 
+const float CONE_HEIGHT = 0.3; //to be determined, dummy for now
+const float PIXEL_SIZE = 6e-6; //size of pixels in the sensor, found from camera datasheet
+const float CENTER_X = 0; //optical center X 
+const float CENTER_Y = 2; //optical center Y
+const float IMG_HALF = 800 - CENTER_X; //correct the Optical Center as offset from the middle,here img width is 1600 
+const float WIDTH_SCALE = 0.5; // scale for x estimation in 3D
 
 using namespace torch::indexing; 
+using namespace cv;
+using namespace std;
+//used for debugging coordinaes with visualization 
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+     if  ( event == EVENT_LBUTTONDOWN )
+     {
+          cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if  ( event == EVENT_RBUTTONDOWN )
+     {
+          cout << "Right button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if  ( event == EVENT_MBUTTONDOWN )
+     {
+          cout << "Middle button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
+     }
+     else if ( event == EVENT_MOUSEMOVE )
+     {
+          cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+
+     }
+}
+
+
 
 class Pipeline { 
 
@@ -109,9 +137,9 @@ return torch::stack({exp_x, exp_y},-1);
 
 torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)[5] ) {
      
-     auto start = std::chrono::system_clock::now(); //only time based 
-     
+     auto start = std::chrono::system_clock::now(); 
      //heights of bounding boxes to Tensor  
+     
      std::memcpy(yolo_out.data_ptr(),input,sizeof(float)*yolo_out.numel());
      yolo_out_gpu = yolo_out.to(torch::kCUDA); 
      
@@ -134,42 +162,42 @@ torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)
      torch::Tensor top_pt = (mid_pts - data_batch.index({"...",0,Slice(0,2)}));  
      torch::Tensor img_h = torch::norm(top_pt,2,1) *  yolo_out_gpu.index({"...",3}); 
      torch::Tensor hbb = img_h * PIXEL_SIZE; 
-     
-     //compute distances 
+
      torch::Tensor distances = FOCAL_LENGTH / (hbb * CONE_HEIGHT);  	 
      
-
-     //compute x pose ------------------------------------------------------
-     torch::Tensor bbox_xcenter = PIXEL_SIZE * (yolo_out_gpu.index({"...",2}) - IMG_HALF); //compute x center pose as offset from middle line of the image 
-     torch::Tensor widths = (bbox_xcenter * distance) / FOCAL_LENGTH; //compute x pose in 3D space 
-
-
-    //time based 
+     //compute the x pose considering distance, box width and 
+     std::cout << "yolo out " << yolo_out_gpu << std::endl; 
+     //torch::Tensor bbox_center  = PIXEL_SIZE * (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - IMG_HALF);
+     //torch::Tensor widths = (bbox_center * distances) /FOCAL_LENGTH;  
+     torch::Tensor widths  = WIDTH_SCALE *  (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - IMG_HALF) /(img_h * CONE_HEIGHT);
      auto end = std::chrono::system_clock::now();
      std::cout << "total time depth estimation :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
      std::cout << "distances " << distances << std::endl; 
+     std::cout << "widths " << widths << std::endl; 
+     return torch::stack({distances,widths},1);
 
-     //return distances 
-     return distances;  
-
-     //uncomment this after fixing plot function and so on 
-     //return stacked x,y poses in 3D space
-     //return torch::stack({distances,widths},1); 
 } 
 
 void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances)
 {
-torch::Tensor dist = distances.to(torch::kCPU);
+torch::Tensor dist = distances.index({"...",0}).to(torch::kCPU);
+torch::Tensor width = distances.index({"...",1}).to(torch::kCPU);
+
+
 cv::Mat img2 = cv::imread("/home/pjfsd/Learning_Cuda/tensorrt/pipeline/samples/img3.jpg");
 for(size_t i=0; i < BATCH_SIZE_REKT;i++)
 { 
         
-         std::vector<float> d(dist[i].data_ptr<float>(), dist[i].data_ptr<float>() + dist[i].numel());	
-       	cv::Rect r = get_rect(img2, res[i].bbox);
+          std::vector<float> d(dist[i].data_ptr<float>(), dist[i].data_ptr<float>() + dist[i].numel());	
+          std::vector<float> w(width[i].data_ptr<float>(), width[i].data_ptr<float>() + width[i].numel());	
+	  cv::Rect r = get_rect(img2, res[i].bbox);
 	  cv::rectangle(img2, r, cv::Scalar(0x27, 0xC1, 0x36), 2);
           //cv::putText(img2, std::to_string((int)res[i].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-	  std::ostringstream ss;
-	  ss << d[0];
+	  std::ostringstream ss; 
+	  std::ostringstream ss1,ss2;
+	  ss1 << floorf(d[0] * 100)/100;
+	  ss2 << floorf(w[0]*100)/100;
+	  ss << ss1.str() << "," << ss2.str(); 
 	  cv::putText(img2, ss.str(), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
           
 	  std::cout << rektnet.sizes() << std::endl; 
@@ -185,8 +213,12 @@ for(size_t i=0; i < BATCH_SIZE_REKT;i++)
 cv::drawContours(img2,car_coordinates,0, cv::Scalar(255,0,0),cv::FILLED, 8 );
 cv::drawContours(img2,edge_coordinates,0, cv::Scalar(255,0,0),cv::FILLED, 8 );
 
+//Create a window
+cv::namedWindow("My Window", 1);
 
-cv::imshow("circle",img2); 
+//set the callback function for any mouse event
+cv::setMouseCallback("My Window", CallBackFunc, NULL);
+cv::imshow("My Window",img2); 
 cv::waitKey(0); 
 
 
@@ -205,19 +237,24 @@ int main(int argc, char** argv)
      Rektnet rektnet = Rektnet(10);
      Pipeline pipeline = Pipeline(); 
      
-     std::vector<cv::Mat> imgs = yolov5.inference("samples/img3.jpg",1); 
+     //yolo inference 
+     std::vector<cv::Mat> imgs = yolov5.inference("samples/im3.jpg",1); 
      for(int i= 0; i < 100; ++i)
      { 
      auto start = std::chrono::system_clock::now();
-
+     
      imgs = yolov5.inference("samples/img3.jpg",1); 
-      
+     
+     //rektnet inference  
      auto out_rekt = rektnet.inference(imgs);  
-     auto out = pipeline.flat_softmax(out_rekt); 
+     //softmax rektnet output and get coordinates from heatmap
+     auto out = pipeline.flat_softmax(out_rekt);
+     //get 3D coordinates of x and y with depth estimation  
      auto dist = pipeline.distance_calculate(out,yolov5.boxes); 
+     
      auto end = std::chrono::system_clock::now();
      std::cout << "total time :" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-     pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,dist ); 
+     pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,dist); 
      }
      return 0;
 }

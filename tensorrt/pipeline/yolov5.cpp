@@ -221,27 +221,23 @@ std::vector<cv::Mat> bboxExtract(cv::Mat& img)
      {
       box_coords.push_back({roi.x,roi.y,roi.width,roi.height,j});
      }
-     else { 
-
-     std::cout << "no " << imgs.size() << std::endl;   
-     }
 
       imgs.push_back(box); 
   } 
-  std::cout << "box coords size " << box_coords.size() << std::endl;   
+  //std::cout << "box coords size " << box_coords.size() << std::endl;   
   std::sort(box_coords.begin(),box_coords.end(),[](std::vector<float> one, std::vector<float> two)
     {
     return (one[3] * one[2]) > (two[3] * two[2]);
     });
   
 
-  std::cout << "box coords size " << box_coords.size() << std::endl;   
+  //std::cout << "box coords size " << box_coords.size() << std::endl;   
   //get sorted boxes based on size 
   for(int i = 0;i < BATCH_SIZE_REKT; ++i)
   {
-    std::cout << box_coords[i][4] << std::endl; 
+    //std::cout << box_coords[i][4] << std::endl; 
     res_sorted.push_back(res[box_coords[i][4]]);
-    std::cout << "yes " << std::endl; 
+    //std::cout << "yes " << std::endl; 
     imgs_sorted.push_back(imgs[box_coords[i][4]]); 
     box_coords_sorted.push_back(box_coords[i]);  
     for(int j = 0; j < 5; j++)
