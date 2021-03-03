@@ -1,0 +1,10 @@
+# filtering parameters
+cone_large_height: 0.28
+cone_small_height: 0.28
+focal_length: 14.7e-3
+pixel_size: 5.86e-6
+center_x: 927
+center_y: 603
+width_scale: 1.0 
+dist_scale:  1.0
+

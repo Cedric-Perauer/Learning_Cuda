@@ -8,7 +8,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
+#include "params.h"
 #include <iostream>
 #include <chrono>
 #include "cuda_runtime_api.h"
@@ -19,8 +19,13 @@
 #include "torch/torch.h"
 #include <sstream> 
 
+
+std::string paramsFilePath = "/home/cedric/CATKIN_FS/src/02_perception/camera/camera_node/src/params.txt"; 
+
+
 const float FOCAL_LENGTH = 1.2e-3; //the same for x and y 
-const float CONE_HEIGHT = 0.3; //to be determined, dummy for now
+const float CONE_HEIGHT_SMALL = 0.28; //small cone heigh to be determined, dummy for now
+const float CONE_HEIGHT_LARGE = 0.4; //large cone height to be determined, dummy for now
 const float PIXEL_SIZE = 5.86e-6; //size of pixels in the sensor, found from camera datasheet
 const float CENTER_X = 0; //optical center X 
 const float CENTER_Y = 2; //optical center Y
@@ -63,10 +68,13 @@ std::vector<std::vector<cv::Point>> car_coordinates;
 std::vector<std::vector<cv::Point>> edge_coordinates; 
 //tensor options 
 torch::TensorOptions options; 
+torch::TensorOptions options_cpu; 
 torch::Tensor tharray_gpu; //tharray stores REKTNET output 
 torch::Tensor slopes; //slopes for mid point for height computation 
 torch::Tensor yolo_out; //yolo outputs include box position and height/width for 3D pose estimation  
 torch::Tensor yolo_out_gpu; //GPU yolo outputs include box position and height/width for 3D pose estimation  
+torch::Tensor cone_heights; 
+PipelineParams params;
 
 public : 
 
@@ -74,21 +82,23 @@ Pipeline(){
 
 //tensors and tensor options 	
 options = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA,0);
+options_cpu = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
 values_x = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
 values_y = torch::linspace(0,(REKT_SIZE -1.0)/REKT_SIZE, REKT_SIZE, options); 
 tharray = torch::zeros({BATCH_SIZE_REKT,7,80,80},torch::kFloat32).to(torch::kCPU); //or use kF64
 tharray_gpu = torch::zeros({BATCH_SIZE_REKT,7,80,80},torch::kFloat32).to(torch::kCUDA); 
 yolo_out = torch::zeros({BATCH_SIZE_REKT,5},torch::kFloat32).to(torch::kCPU);  
 yolo_out_gpu = torch::zeros({BATCH_SIZE_REKT,5},torch::kFloat32).to(torch::kCUDA);  
-
+cone_heights = torch::ones({BATCH_SIZE_REKT}, torch::kFloat32).to(torch::kCUDA) * CONE_HEIGHT_SMALL ; //set cone height vector  
 
 
 //masks
+
+//car mask 
 car_coordinates.push_back(std::vector<cv::Point>());
-car_coordinates[0].push_back(cv::Point(0,0));
+car_coordinates[0].push_back(cv::Point(0,0)); 
 //car mask 
 /*
-//car mask 
 car_coordinates[0].push_back(cv::Point(155,1200)); 
 car_coordinates[0].push_back(cv::Point(202,1146)); 
 car_coordinates[0].push_back(cv::Point(208,1156)); 
@@ -148,8 +158,18 @@ return torch::stack({exp_x, exp_y},-1);
 
 
 
-torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)[5] ) {
-     
+torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)[5], std::vector<int> &box_large_id )
+{    
+      //read params from file 
+      if (!params.fromFile(paramsFilePath))
+      {
+          std::cerr << "Error reading params file" << std::endl;
+      }
+
+     //convert vector of yolo large box indeces  to Tensor 
+     torch::Tensor box_idcs = torch::from_blob(box_large_id.data(), {box_large_id.size()}, options_cpu).to(torch::kInt64); 
+     torch::Tensor box_idcs_gpu = box_idcs.to(torch::kCUDA); 
+     cone_heights = cone_heights.index_put_({box_idcs_gpu},params.cone_large_height);     
      //heights of bounding boxes to Tensor  
      
      std::memcpy(yolo_out.data_ptr(),input,sizeof(float)*yolo_out.numel());
@@ -173,32 +193,33 @@ torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)
 
      torch::Tensor top_pt = (mid_pts - data_batch.index({"...",0,Slice(0,2)}));  
      torch::Tensor img_h = torch::norm(top_pt,2,1) *  yolo_out_gpu.index({"...",3}); 
-     torch::Tensor hbb = img_h * PIXEL_SIZE; 
+     torch::Tensor hbb = img_h * params.pixel_size; 
 
-     torch::Tensor distances = FOCAL_LENGTH / (hbb * CONE_HEIGHT);  	 
+     torch::Tensor distances = params.focal_length / (hbb * cone_heights);  	 
      
      //compute the x pose considering distance, box width and 
      //torch::Tensor bbox_center  = PIXEL_SIZE * (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - IMG_HALF);
      //torch::Tensor widths = (bbox_center * distances) /FOCAL_LENGTH;  
       
      //this is the x value of the bounding box middle on the image sensor   
-     torch::Tensor camera_x = (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - IMG_HALF) * PIXEL_SIZE;  
+     torch::Tensor camera_x = (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - params.center_x) * params.pixel_size;  
      //camera_d is the straight line drawn from the distance to the image sensor
-     torch::Tensor camera_d = torch::sqrt( camera_x * camera_x + FOCAL_LENGTH + FOCAL_LENGTH);
+     torch::Tensor camera_d = torch::sqrt( camera_x * camera_x + params.focal_length + params.focal_length);
 
      //calc x coordinates 
      torch::Tensor x = camera_x * distances /(camera_d); 
      //calc y coordinates 
-     torch::Tensor y = distances * FOCAL_LENGTH /(camera_d) ; 
+     torch::Tensor y = distances * params.focal_length /(camera_d); 
 
-
-     torch::Tensor widths  = WIDTH_SCALE *  (yolo_out_gpu.index({"...",0}) + (yolo_out_gpu.index({"...",2}) * 0.5) - IMG_HALF) /(img_h * CONE_HEIGHT);
+     std::cout << "distances" << distances << std::endl;
+     std::cout << "x" << x << std::endl;
+     std::cout << "y" << y << std::endl;
      auto end = std::chrono::system_clock::now();
-     return torch::stack({distances,widths},1);
+     return torch::stack({y,x},1);
 
 } 
 
-void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances,cv::Mat &img2)
+void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances,cv::Mat &img2,const int &idx)
 {
 
 
@@ -206,7 +227,7 @@ torch::Tensor dist = distances.index({"...",0}).to(torch::kCPU);
 torch::Tensor width = distances.index({"...",1}).to(torch::kCPU);
 
 
-for(size_t i=0; i < BATCH_SIZE_REKT;i++)
+for(size_t i=0; i < idx;i++)
 { 
         
           std::vector<float> d(dist[i].data_ptr<float>(), dist[i].data_ptr<float>() + dist[i].numel());	
@@ -219,8 +240,6 @@ for(size_t i=0; i < BATCH_SIZE_REKT;i++)
 	   cv::rectangle(img2, r, cv::Scalar(0, 165,255 ), 2);
 	   } 
 	   else if((int)res[i].class_id == 2){
-	   cv::rectangle(img2, r, cv::Scalar(0, 0, 255), 2);
-	   }else if((int)res[i].class_id == 2){
 	   cv::rectangle(img2, r, cv::Scalar(0, 0, 255), 2);
 	   }else if((int)res[i].class_id == 3){
 	   cv::rectangle(img2, r, cv::Scalar(0, 255, 255), 2);
@@ -294,27 +313,24 @@ void chatterCallback(const sensor_msgs::ImageConstPtr &img)  {
            ROS_ERROR("cv_bridge exception: %s", e.what());
           return;
      	 }
-	std::cout << "heard basler image messsage " << std::endl; 
 	cv::Mat image; 
 	image = cv_ptr->image; 
-std::cout << "heard basler image messsage2 " << std::endl; 
 	std::vector<cv::Mat> imgs = yolov5.inference(image);
-       	std::cout << "heard basler image messsage3 " << std::endl; 
 	//rektnet inference  
         if (yolov5.no_out != true) {
         auto out_rekt = rektnet.inference(imgs);  
         //softmax rektnet output and get coordinates from heatmap
         auto out = pipeline.flat_softmax(out_rekt);
         //get 3D coordinates of x and y with depth estimation  
-        auto dist = pipeline.distance_calculate(out,yolov5.boxes); 
-        //pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,dist,image);  
+        auto dist = pipeline.distance_calculate(out,yolov5.boxes,yolov5.box_large); 
+        pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,dist,image,yolov5.c);  
         } 
 
 	else { 
 
 	 
-	 //cv::imshow("My Window",image); 
-	 //cv::waitKey(1); 
+	 cv::imshow("My Window",image); 
+	 cv::waitKey(1); 
 	} 
         
 }
@@ -328,6 +344,7 @@ int main(int argc, char **argv)
 {
  ros::init(argc,argv,"camera_sub"); 
  ros::NodeHandle n;  
+ //CameraNode cn("/fsds/camera/cam1");  
  CameraNode cn("/pylon_camera_node/image_raw");  
  ros::spin();
  return 0; 
