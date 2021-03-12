@@ -1,4 +1,11 @@
-## Cuda Book Summary
+## Repository for CUDA based Studying and Projects
+
+The Tensorrt folder contains the source code for the two stage object detetor and keypoint extractor deep learning computer vision pipeline which was part of my Bachelor-Thesis. It also implements vectorized depth estimation on a GPU. For further details and install instructions refer to the [ReadMe.md](https://github.com/Cedric-Perauer/Learning_Cuda/edit/master/tensorrt/camera_node/readme.md) in that subfolder. 
+
+![](https://github.com/Cedric-Perauer/Learning_Cuda/blob/master/Screenshot%202021-03-13%20at%2000.10.42.png)
+
+
+## Cuda : Summary of some Importance Concepts  
 
 #### Streaming Multiprocessor (SM) 
 CUDA GPUs are based on scalable arrays of multithreaded SMs. Each SM consists of several CUDA cores. 
