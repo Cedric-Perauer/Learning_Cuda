@@ -7,4 +7,6 @@ center_x: 927
 center_y: 603
 width_scale: 1.0 
 dist_scale:  1.0
+#topic name of raw camera input 
+topic_name: /pylon_camera_node/image_raw 
 

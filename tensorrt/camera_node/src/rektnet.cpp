@@ -37,7 +37,7 @@ class Rektnet {
         
 	bs = batchSize; 	
 	cudaSetDevice(REKT_DEVICE);
-        engine_name = "/home/cedric/CATKIN_FS/src/02_perception/camera/camera_node/src/rektnet.engine"; 
+        engine_name = "/home/" + USER + "/CATKIN_FS/src/02_perception/camera/camera_node/src/rektnet.engine"; 
         std::ifstream file(engine_name,std::ios::binary);
         
         if(file.good()) {

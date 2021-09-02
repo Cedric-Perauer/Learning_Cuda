@@ -18,10 +18,11 @@
 #include "rektnet.cpp"
 #include "torch/torch.h"
 #include <sstream> 
+#include "pose_msgs/Cone_Points.h" 
 
 
-std::string paramsFilePath = "/home/cedric/CATKIN_FS/src/02_perception/camera/camera_node/src/params.txt"; 
-
+std::string paramsFilePath ="/home/" + USER + "/CATKIN_FS/src/02_perception/camera/camera_node/src/params.txt"; 
+PipelineParams params;
 
 const float FOCAL_LENGTH = 1.2e-3; //the same for x and y 
 const float CONE_HEIGHT_SMALL = 0.28; //small cone heigh to be determined, dummy for now
@@ -74,7 +75,6 @@ torch::Tensor slopes; //slopes for mid point for height computation
 torch::Tensor yolo_out; //yolo outputs include box position and height/width for 3D pose estimation  
 torch::Tensor yolo_out_gpu; //GPU yolo outputs include box position and height/width for 3D pose estimation  
 torch::Tensor cone_heights; 
-PipelineParams params;
 
 public : 
 
@@ -98,6 +98,7 @@ cone_heights = torch::ones({BATCH_SIZE_REKT}, torch::kFloat32).to(torch::kCUDA) 
 car_coordinates.push_back(std::vector<cv::Point>());
 car_coordinates[0].push_back(cv::Point(0,0)); 
 //car mask 
+
 /*
 car_coordinates[0].push_back(cv::Point(155,1200)); 
 car_coordinates[0].push_back(cv::Point(202,1146)); 
@@ -123,6 +124,8 @@ car_coordinates[0].push_back(cv::Point(1774,1200));
 */
 //edge mask
 edge_coordinates.push_back(std::vector<cv::Point>()); 
+edge_coordinates[0].push_back(cv::Point(0,0));
+/*
 edge_coordinates[0].push_back(cv::Point(0,300)); 
 edge_coordinates[0].push_back(cv::Point(0,1200)); 
 edge_coordinates[0].push_back(cv::Point(1920,1200)); 
@@ -130,7 +133,8 @@ edge_coordinates[0].push_back(cv::Point(1920,300));
 edge_coordinates[0].push_back(cv::Point(1900,300)); 
 edge_coordinates[0].push_back(cv::Point(1900,1180)); 
 edge_coordinates[0].push_back(cv::Point(20,1180)); 
-edge_coordinates[0].push_back(cv::Point(20,300)); 
+edge_coordinates[0].push_back(cv::Point(20,300));
+*/ 
 
 slopes = torch::ones({BATCH_SIZE_REKT}).to(torch::kCUDA);  
 } 
@@ -211,21 +215,22 @@ torch::Tensor distance_calculate(const torch::Tensor &data_batch, float (*input)
      //calc y coordinates 
      torch::Tensor y = distances * params.focal_length /(camera_d); 
 
-     std::cout << "distances" << distances << std::endl;
-     std::cout << "x" << x << std::endl;
-     std::cout << "y" << y << std::endl;
+
      auto end = std::chrono::system_clock::now();
+    
      return torch::stack({y,x},1);
 
 } 
 
-void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances,cv::Mat &img2,const int &idx)
+void plot_pts(std::vector<Yolo::Detection>& res, std::vector<std::vector<float>> &bbox_vals, torch::Tensor &rektnet, torch::Tensor &distances,cv::Mat &img2,int &idx)
 {
-
 
 torch::Tensor dist = distances.index({"...",0}).to(torch::kCPU);
 torch::Tensor width = distances.index({"...",1}).to(torch::kCPU);
 
+if(idx >= 10 ) {
+idx = 10; 
+}
 
 for(size_t i=0; i < idx;i++)
 { 
@@ -233,6 +238,7 @@ for(size_t i=0; i < idx;i++)
           std::vector<float> d(dist[i].data_ptr<float>(), dist[i].data_ptr<float>() + dist[i].numel());	
           std::vector<float> w(width[i].data_ptr<float>(), width[i].data_ptr<float>() + width[i].numel());	
 	  cv::Rect r = get_rect(img2, res[i].bbox);
+         
 	  
 	   if((int)res[i].class_id == 0){
 	   cv::rectangle(img2, r, cv::Scalar(255, 0, 0), 2);
@@ -247,6 +253,7 @@ for(size_t i=0; i < idx;i++)
 	   else {
 	   cv::rectangle(img2, r, cv::Scalar(0, 255, 0), 2);
 	   } 
+        
           
           //cv::putText(img2, std::to_string((int)res[i].class_id), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
 	  std::ostringstream ss; 
@@ -254,7 +261,7 @@ for(size_t i=0; i < idx;i++)
 	  ss1 << floorf(d[0] * 100)/100;
 	  ss2 << floorf(w[0]*100)/100;
 	  ss << ss1.str() << "," << ss2.str(); 
-	  cv::putText(img2, ss.str(), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+	  //cv::putText(img2, ss.str(), cv::Point(r.x, r.y - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
           
 	  rektnet = rektnet.to(torch::kCPU); 
 	  for(int j = 0; j < 7 ;++j)
@@ -290,13 +297,16 @@ class CameraNode {
 		image_transport::ImageTransport it_; 
 		image_transport::Subscriber image_sub_; 
                 YOLO_INF yolov5 = YOLO_INF();
-		Rektnet rektnet = Rektnet(10); 
+		Rektnet rektnet = Rektnet(16); 
 		Pipeline pipeline = Pipeline();
+                ros::Publisher obstacle_pub_; //publish obstacles in an array of points 
 
 	public : 
 
-		CameraNode(const std::string &topic_name) : it_(nh_) {
+		CameraNode(const std::string &topic_name,const bool& latch = false) : it_(nh_) {
 		image_sub_ = it_.subscribe(topic_name,1,&CameraNode::chatterCallback,this); 	
+		ros::NodeHandle nh("~");
+		obstacle_pub_ = nh.advertise<pose_msgs::Cone_Points>("/camera/cone_poses",1,latch); 
 		}
 		~CameraNode() {}
 
@@ -304,7 +314,9 @@ void chatterCallback(const sensor_msgs::ImageConstPtr &img)  {
         
 	
 	cv_bridge::CvImagePtr cv_ptr;
-	 try
+	pose_msgs::Cone_Points msg; //initalized ROS message  
+
+	try
          {
            cv_ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::BGR8);
           }
@@ -322,8 +334,30 @@ void chatterCallback(const sensor_msgs::ImageConstPtr &img)  {
         //softmax rektnet output and get coordinates from heatmap
         auto out = pipeline.flat_softmax(out_rekt);
         //get 3D coordinates of x and y with depth estimation  
-        auto dist = pipeline.distance_calculate(out,yolov5.boxes,yolov5.box_large); 
-        pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,dist,image,yolov5.c);  
+        auto pose = pipeline.distance_calculate(out,yolov5.boxes,yolov5.box_large); 
+        //put poses into ROS message 
+	//bring dist to CPU 
+	torch::Tensor dist_y = pose.index({"...",0}).to(torch::kCPU);
+        torch::Tensor dist_x  = pose.index({"...",1}).to(torch::kCPU);
+
+	
+	std::cout << yolov5.valid_boxes << std::endl;
+         	
+	for(int i = 0; i < yolov5.valid_boxes; ++i) 
+	{
+	    float x = dist_x[i].item<double>(); 
+	    float y = dist_y[i].item<double>(); 
+            geometry_msgs::Pose2D cur_cone;
+            cur_cone.x = x; 
+            cur_cone.y = y;
+            cur_cone.theta = yolov5.res[i].class_id; //send box color  
+            if (x < 20.0 && y < 20.0) //filter crazy outliers 
+            {
+            msg.locations.push_back(cur_cone); 	    
+            }     
+	}
+	//plot 
+	pipeline.plot_pts(yolov5.res_sorted,yolov5.box_coords,out,pose,image,yolov5.valid_boxes);  
         } 
 
 	else { 
@@ -331,21 +365,24 @@ void chatterCallback(const sensor_msgs::ImageConstPtr &img)  {
 	 
 	 cv::imshow("My Window",image); 
 	 cv::waitKey(1); 
-	} 
-        
+	}
+		//msg.time = ros::Time::now(); 
+	obstacle_pub_.publish(msg); 
+
 }
-
-
 
 }; 
 
 
 int main(int argc, char **argv)
 {
+ if (!params.fromFile(paramsFilePath))
+    {
+          std::cerr << "Error reading params file for topic" << std::endl;
+    }
  ros::init(argc,argv,"camera_sub"); 
  ros::NodeHandle n;  
- //CameraNode cn("/fsds/camera/cam1");  
- CameraNode cn("/pylon_camera_node/image_raw");  
+ CameraNode cn(params.topic_name);  
  ros::spin();
  return 0; 
 }

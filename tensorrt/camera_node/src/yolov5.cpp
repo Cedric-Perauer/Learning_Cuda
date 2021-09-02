@@ -26,7 +26,8 @@ static const int OUTPUT_SIZE = Yolo::MAX_OUTPUT_BBOX_COUNT * sizeof(Yolo::Detect
 const char* INPUT_BLOB_NAME = "data";
 const char* OUTPUT_BLOB_NAME = "prob";
 static Logger gLogger;
-const int BATCH_SIZE_REKT = 10; 
+const int BATCH_SIZE_REKT = 16; 
+std::string USER = getenv("USER"); //user path for tensorrt .engine files
 
 class YOLO_INF
 {
@@ -47,6 +48,7 @@ public:
   int inputIndex;
   int outputIndex;
   int c = 0; 
+  int valid_boxes = 0; //number of actually resuable cones 
   bool no_out = false; 
   std::vector<std::vector<float>> box_coords; //box coordinates 
   std::vector<std::vector<float>> box_coords_sorted; //box coordinates sorted
@@ -62,9 +64,8 @@ public:
     // create a model using the API directly and serialize it to a stream
     char *trtModelStream{ nullptr };
     size_t size{ 0 };
-    engine_name = "/home/cedric/CATKIN_FS/src/02_perception/camera/camera_node/src/yolov5s.engine";
-
-	  std::ifstream file(engine_name, std::ios::binary);
+    engine_name = "/home/" + USER + "/CATKIN_FS/src/02_perception/camera/camera_node/src/yolov5s.engine";
+    std::ifstream file(engine_name, std::ios::binary);
 
         if (file.good()) {
             file.seekg(0, file.end);
@@ -78,6 +79,7 @@ public:
     
 //masks
 car_coordinates.push_back(std::vector<cv::Point>());
+
 car_coordinates[0].push_back(cv::Point(0,0));
 //car mask 
 /*
@@ -185,9 +187,21 @@ std::vector<cv::Mat> bboxExtract(cv::Mat& img)
      //get bounding box
      cv::Rect roi = get_rect(img, res[j].bbox);  
      //catch out of bounds error of yolo tenorrt implementation 
-     if(roi.height + roi.y > 1200) {
-             roi.height = 1200 - roi.y; 
+         if(roi.height + roi.y > img.rows) {
+             roi.height = img.rows - roi.y; 
       }
+     if(roi.width + roi.x > img.cols) {
+             roi.width = img.cols - roi.x; 
+      }
+     
+     if(roi.x < 0 ){
+      roi.x = 0;
+     }
+     if(roi.y < 0){
+     roi.y = 0; 
+     } 
+
+     
 
      cv::Mat box = img(roi);
 
@@ -215,7 +229,7 @@ std::vector<cv::Mat> bboxExtract(cv::Mat& img)
 	     {  dist_car = -1.0;}  
 	     else { dist_car = 1.0;} 
              
-	     if (dist_car == 1.0 || dist_edge == 1.0 || dist_edge == 0.0) 
+	     if (dist_car == 1.0 || dist_edge == 1.0) //changed  
 	     { inside = 1.0;  }
      }
     
@@ -236,10 +250,11 @@ std::vector<cv::Mat> bboxExtract(cv::Mat& img)
 
   //std::cout << "box coords size " << box_coords.size() << std::endl;   
   //get sorted boxes based on size 
+  int idx = 0; 
   for(int i = 0;i < BATCH_SIZE_REKT; ++i)
   {
     //std::cout << box_coords[i][4] << std::endl; 
-     int idx = i; 
+     idx = i; 
 if (i >= c){
 idx = c-1;}
     
@@ -260,10 +275,8 @@ idx = c-1;}
     }
 
   } 
+  valid_boxes = idx+1; //set proccesed
 
-  for(int i = 0;i < BATCH_SIZE_REKT; ++i){
-
-  }
   return imgs_sorted; 
 } 
 

@@ -15,7 +15,8 @@ struct PipelineParams {
   float center_x;
   float center_y;
   float width_scale; 
-  float dist_scale; 
+  float dist_scale;
+  std::string topic_name;  
   
 
   bool fromFile(const std::string &filePath) {
@@ -52,6 +53,8 @@ struct PipelineParams {
         check1 >> width_scale;
       } else if (paramName == "dist_scale:") {
         check1 >> dist_scale;
+      } else if(paramName == "topic_name:") { 
+        check1 >> topic_name; 
       } 
       else {
         std::cerr << "Unrecognized pipeline parameter: " << paramName << std::endl;
