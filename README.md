@@ -1,6 +1,9 @@
 ## Repository for CUDA based Studying and Projects
 
-The Tensorrt folder contains the source code for the two stage object detetor and keypoint extractor deep learning computer vision pipeline which was part of my Bachelor-Thesis. It also implements vectorized depth estimation on a GPU. For further details and install instructions refer to the [ReadMe.md](https://github.com/Cedric-Perauer/Learning_Cuda/edit/master/tensorrt/camera_node/readme.md) in that subfolder. 
+
+## Formula Student project (inside tensorrt/camera_node)
+
+Contains the source code for the two stage object detetor and keypoint extractor deep learning computer vision pipeline which was part of my [Bachelor-Thesis](https://www.researchgate.net/publication/349929458_Bachelor_Thesis_Development_and_Deployment_of_a_Perception_Stack_for_the_Formula_Student_Driverless_Competition). It also implements vectorized depth estimation on a GPU. For further details and install instructions refer to the [ReadMe.md](https://github.com/Cedric-Perauer/Learning_Cuda/edit/master/tensorrt/camera_node/readme.md) in that subfolder. 
 
 ![](https://github.com/Cedric-Perauer/Learning_Cuda/blob/master/Screenshot%202021-03-13%20at%2000.10.42.png)
 
